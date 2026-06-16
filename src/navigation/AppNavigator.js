@@ -29,7 +29,7 @@ const AppNavigator = () => (
     <Stack.Screen name="Main" component={TabNavigator} />
 
     {/* Stack screens reachable from any tab */}
-    <Stack.Screen name="ListingDetail" component={ListingDetailScreen} />
+    <Stack.Screen name="ListingDetail" component={ListingDetailScreen} options={{ headerShown: false }} />
     <Stack.Screen name="PostListing"   component={PostListingScreen} />
     <Stack.Screen name="UserProfile"   component={UserProfileScreen} />
     <Stack.Screen name="ChatRoom"      component={ChatRoomScreen} />

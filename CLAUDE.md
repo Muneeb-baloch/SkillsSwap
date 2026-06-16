@@ -4,6 +4,7 @@
 
 - ProfileScreen: ✅ fully built (hero, stats, skills, appearance toggle, listings/reviews preview, quick actions, sign out, skeleton loading)
 - EditProfileScreen: ✅ built (`src/screens/stack/EditProfileScreen.js`) — uses the `getStyles(theme)` pattern, updates both Firebase Auth (`displayName`, `photoURL`) and the Firestore `users` doc
+- ListingDetailScreen: ✅ fully built — has a request modal with skill selector + duplicate-request check, own-listing detection (Edit/Pause vs Request Swap), and a similar-listings section. Uses `getStyles(theme)`, SVG icons for the views/requests stat chips (emoji don't render reliably on iOS), and the no-photo hero fallback shows an avatar circle + skill name rather than a giant single letter (a lone "I" rendered as a broken-looking vertical line)
 
 # Stack screens
 
@@ -20,4 +21,4 @@
 
 # Layout
 
-- Screens use `SafeAreaView` for top-inset handling; headers use a fixed `paddingTop` (e.g. 12) rather than adding `insets.top` on top of it — doing both double-counts the safe area and creates excess top spacing (was a bug in ProfileScreen and MyListingsScreen, now fixed). `PostListingScreen` is the exception: it has no `SafeAreaView`, so it correctly adds `insets.top` manually.
+- Screens use `SafeAreaView` for top-inset handling; headers use a fixed `paddingTop` (e.g. 12) rather than adding `insets.top` on top of it — doing both double-counts the safe area and creates excess top spacing (was a bug in ProfileScreen and MyListingsScreen, now fixed). `PostListingScreen` and `ListingDetailScreen` are the exceptions: neither uses `SafeAreaView` (the latter needs an edge-to-edge hero image behind the status bar), so both correctly add `insets.top`/`insets.bottom` manually via `useSafeAreaInsets()`.
