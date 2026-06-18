@@ -6,6 +6,10 @@ const getStyles = theme =>
       flex: 1,
       backgroundColor: theme.background,
     },
+    scrollView: {
+      flex: 1,
+      backgroundColor: theme.background,
+    },
     scrollContent: {
       paddingBottom: 0,
     },
@@ -28,14 +32,23 @@ const getStyles = theme =>
     },
 
     // ── Part 1: Hero ──────────────────────────────────────────────────────
+    // The foreground (button row + skill text) is a flex COLUMN overlaying the
+    // hero: the button row sits at the top and the text takes the remaining
+    // flex:1 space below it. Because they're siblings in a column (not stacked
+    // absolute layers) the text can never overlap the buttons or status bar,
+    // no matter how long the skill title is.
     heroSection: {
-      height: 260,
+      height: 230,
       position: 'relative',
       backgroundColor: theme.cardBg,
+      overflow: 'hidden',
     },
     heroImage: {
-      width: '100%',
-      height: 260,
+      ...StyleSheet.absoluteFillObject,
+    },
+    heroImageOverlay: {
+      ...StyleSheet.absoluteFillObject,
+      backgroundColor: 'rgba(0,0,0,0.3)',
     },
     heroImageLoader: {
       ...StyleSheet.absoluteFillObject,
@@ -43,84 +56,88 @@ const getStyles = theme =>
       alignItems: 'center',
       justifyContent: 'center',
     },
-    heroFallbackBase: {
-      ...StyleSheet.absoluteFillObject,
-      // Fixed brand purple (same value in both themes) rather than theme.cardBg —
-      // guarantees the white ghost letter/chip/icons below stay legible in light mode.
-      backgroundColor: theme.purple,
+    decorCircleTop: {
+      position: 'absolute',
+      top: -40,
+      right: -40,
+      width: 200,
+      height: 200,
+      borderRadius: 100,
+      backgroundColor: 'rgba(83,74,183,0.25)',
+    },
+    decorCircleBottom: {
+      position: 'absolute',
+      bottom: 20,
+      left: -20,
+      width: 120,
+      height: 120,
+      borderRadius: 60,
+      backgroundColor: 'rgba(29,158,117,0.15)',
+    },
+    // Foreground content sits as direct flex children of heroSection (which has
+    // an explicit height: 230), so the button row takes its natural height at
+    // the top and heroTextWrap's flex:1 reliably fills the rest below it.
+    heroButtonRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingHorizontal: 16,
+    },
+    heroButton: {
+      width: 38,
+      height: 38,
+      borderRadius: 19,
       alignItems: 'center',
       justifyContent: 'center',
+      backgroundColor: theme.cardBg,
+      borderWidth: 1,
+      borderColor: theme.divider,
     },
-    heroFallbackTint: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0,0,0,0.12)',
-    },
-    heroFallbackContent: {
-      alignItems: 'center',
-    },
-    heroAvatarCircle: {
-      width: 80,
-      height: 80,
-      borderRadius: 40,
-      backgroundColor: 'rgba(255,255,255,0.2)',
+    heroTextWrap: {
+      flex: 1,
       alignItems: 'center',
       justifyContent: 'center',
-    },
-    heroAvatarInitials: {
-      color: '#FFFFFF',
-      fontSize: 28,
-      fontWeight: '800',
+      paddingHorizontal: 28,
+      paddingBottom: 16,
     },
     heroSkillText: {
-      color: '#FFFFFF',
-      fontSize: 18,
+      color: theme.textPrimary,
+      fontSize: 17,
       fontWeight: '700',
       textAlign: 'center',
-      paddingHorizontal: 30,
-      marginTop: 12,
+      marginBottom: 10,
     },
     heroCategoryChip: {
-      marginTop: 8,
-      backgroundColor: 'rgba(255,255,255,0.18)',
+      backgroundColor: 'rgba(83,74,183,0.15)',
       borderWidth: 1,
-      borderColor: 'rgba(255,255,255,0.55)',
+      borderColor: 'rgba(83,74,183,0.4)',
       borderRadius: 20,
       paddingHorizontal: 14,
-      paddingVertical: 6,
+      paddingVertical: 5,
     },
     heroCategoryChipText: {
-      color: '#FFFFFF',
-      fontSize: 13,
+      color: theme.purple,
+      fontSize: 12,
       fontWeight: '600',
     },
-    circleButtonBase: {
-      position: 'absolute',
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      alignItems: 'center',
-      justifyContent: 'center',
-      // Always a translucent black circle — both the photo hero and the fixed-purple
-      // fallback hero are dark/saturated enough for the white icon to read clearly.
-      backgroundColor: 'rgba(0,0,0,0.4)',
-    },
-    backButtonPosition: {
-      left: 16,
-    },
-    shareButtonPosition: {
-      right: 16,
+    heroTransition: {
+      height: 20,
+      backgroundColor: theme.background,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      marginTop: -24,
+      zIndex: 5,
     },
 
     // ── Part 2: Poster info row ───────────────────────────────────────────
     posterRow: {
-      marginTop: -20,
+      marginTop: 0,
       marginHorizontal: 20,
       backgroundColor: theme.cardBg,
       borderRadius: 16,
       padding: 16,
       flexDirection: 'row',
       alignItems: 'center',
-      zIndex: 10,
     },
     posterAvatarImage: {
       width: 56,
@@ -151,13 +168,12 @@ const getStyles = theme =>
       fontSize: 16,
       fontWeight: '700',
     },
-    posterCityRow: {
+    posterLocationRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      gap: 4,
       marginTop: 2,
     },
-    posterCityText: {
+    posterCity: {
       color: theme.textMuted,
       fontSize: 12,
     },

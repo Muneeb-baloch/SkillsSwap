@@ -53,6 +53,11 @@ function getInitials(name) {
     .slice(0, 2);
 }
 
+function capitalize(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 // ── Local components ─────────────────────────────────────────────────────────
 
 const SkeletonCard = ({ styles }) => (
@@ -131,7 +136,7 @@ const ListingCard = ({ item, navigation, styles, theme }) => {
       <View style={styles.skillRow}>
         <Text style={styles.skillLabel}>Offering</Text>
         <Text style={styles.offerSkill} numberOfLines={1}>
-          {item.offerSkill}
+          {capitalize(item.offerSkill)}
         </Text>
       </View>
 
@@ -139,7 +144,7 @@ const ListingCard = ({ item, navigation, styles, theme }) => {
       <View style={styles.skillRow}>
         <Text style={styles.skillLabel}>Wants</Text>
         <Text style={styles.wantSkill} numberOfLines={1}>
-          {item.wantSkill}
+          {capitalize(item.wantSkill)}
         </Text>
       </View>
 

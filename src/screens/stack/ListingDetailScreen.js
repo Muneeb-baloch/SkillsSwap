@@ -59,18 +59,23 @@ function formatDate(date) {
   return date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
+function capitalize(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
-const BackIcon = () => (
+const BackIcon = ({ color }) => (
   <Svg width={20} height={20} viewBox="0 0 24 24">
-    <Path d="M19 12H5M12 5l-7 7 7 7" stroke="#FFFFFF" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <Path d="M19 12H5M12 5l-7 7 7 7" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
   </Svg>
 );
 
-const ShareIcon = () => (
+const ShareIcon = ({ color }) => (
   <Svg width={20} height={20} viewBox="0 0 24 24">
-    <Path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
-    <Path d="M16 6l-4-4-4 4M12 2v13" stroke="#FFFFFF" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <Path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+    <Path d="M16 6l-4-4-4 4M12 2v13" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
   </Svg>
 );
 
@@ -98,6 +103,18 @@ const PinIcon = ({ color }) => (
       fill="none"
     />
     <Path d="M12 11.5a2.5 2.5 0 100-5 2.5 2.5 0 000 5z" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none" />
+  </Svg>
+);
+
+const LocationPinIcon = ({ color }) => (
+  <Svg width={11} height={11} viewBox="0 0 24 24" style={{ marginRight: 3, marginTop: 1 }}>
+    <Path
+      d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z"
+      fill="none"
+      stroke={color}
+      strokeWidth={2.5}
+      strokeLinecap="round"
+    />
   </Svg>
 );
 
@@ -178,6 +195,7 @@ const ListingDetailScreen = ({ navigation, route }) => {
 
   const [posterRating, setPosterRating] = useState(0);
   const [posterReviews, setPosterReviews] = useState(0);
+  const [posterData, setPosterData] = useState(null);
 
   const [currentUserSkills, setCurrentUserSkills] = useState([]);
 
@@ -197,12 +215,15 @@ const ListingDetailScreen = ({ navigation, route }) => {
     // Increment view count silently
     updateDoc(doc(db, 'listings', listing.id), { views: increment(1) }).catch(() => {});
 
-    // Fetch poster rating
+    // Fetch poster data (rating, reviewCount, and real name/photo — listing.userName
+    // can be stale/missing if displayName was null when the listing was created)
     getDoc(doc(db, 'users', listing.userId))
       .then(snap => {
         if (snap.exists()) {
-          setPosterRating(snap.data().rating || 0);
-          setPosterReviews(snap.data().reviewCount || 0);
+          const data = snap.data();
+          setPosterData(data);
+          setPosterRating(data.rating || 0);
+          setPosterReviews(data.reviewCount || 0);
         }
       })
       .catch(() => {});
@@ -270,14 +291,14 @@ const ListingDetailScreen = ({ navigation, route }) => {
   }
 
   const hasPhoto = !!listing.photoURL;
-  const heroAvatarInitials =
-    (listing.userName ? listing.userName.charAt(0).toUpperCase() : 'U') +
-    (listing.offerSkill ? listing.offerSkill.charAt(0).toUpperCase() : '?');
+
+  const posterName = posterData?.name || listing.userName || 'User';
+  const posterPhoto = posterData?.photoURL || listing.userPhoto || '';
 
   const handleShare = () => {
     Share.share({
-      message: `Check out this skill swap on SkillsSwap!\n${listing.userName} is offering: ${listing.offerSkill}\nIn exchange for: ${listing.wantSkill}`,
-      title: 'SkillsSwap — ' + listing.offerSkill,
+      message: `Check out this skill swap on SkillsSwap!\n${listing.userName} is offering: ${capitalize(listing.offerSkill)}\nIn exchange for: ${capitalize(listing.wantSkill)}`,
+      title: 'SkillsSwap — ' + capitalize(listing.offerSkill),
     });
   };
 
@@ -363,6 +384,7 @@ const ListingDetailScreen = ({ navigation, route }) => {
     <View style={styles.container}>
       {/* ── Part 1: Hero ──────────────────────────────────────────────── */}
       <View style={styles.heroSection}>
+        {/* Background layer (absolute, behind the foreground) */}
         {hasPhoto ? (
           <>
             <Image
@@ -372,6 +394,7 @@ const ListingDetailScreen = ({ navigation, route }) => {
               onLoadStart={() => setImageLoading(true)}
               onLoadEnd={() => setImageLoading(false)}
             />
+            <View style={styles.heroImageOverlay} />
             {imageLoading && (
               <View style={styles.heroImageLoader}>
                 <ActivityIndicator color={theme.purple} />
@@ -379,56 +402,56 @@ const ListingDetailScreen = ({ navigation, route }) => {
             )}
           </>
         ) : (
-          <View style={[styles.heroFallbackBase, { paddingTop: insets.top }]}>
-            <View style={styles.heroFallbackTint} />
-            <View style={styles.heroFallbackContent}>
-              <View style={styles.heroAvatarCircle}>
-                <Text style={styles.heroAvatarInitials}>{heroAvatarInitials}</Text>
-              </View>
-              <Text style={styles.heroSkillText} numberOfLines={2}>
-                {listing.offerSkill}
-              </Text>
-              <View style={styles.heroCategoryChip}>
-                <Text style={styles.heroCategoryChipText}>{listing.offerCategory || 'Skill'}</Text>
-              </View>
+          <>
+            <View style={styles.decorCircleTop} />
+            <View style={styles.decorCircleBottom} />
+          </>
+        )}
+
+        {/* Foreground: button row (top) + skill text (centered below), as direct
+            flex children of the fixed-height hero so they never overlap. */}
+        <View style={[styles.heroButtonRow, { marginTop: insets.top + 10 }]}>
+          <TouchableOpacity style={styles.heroButton} onPress={() => navigation.goBack()} activeOpacity={0.8}>
+            <BackIcon color={theme.textPrimary} />
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.heroButton} onPress={handleShare} activeOpacity={0.8}>
+            <ShareIcon color={theme.textPrimary} />
+          </TouchableOpacity>
+        </View>
+
+        {!hasPhoto && (
+          <View style={styles.heroTextWrap}>
+            <Text style={styles.heroSkillText} numberOfLines={2} ellipsizeMode="tail">
+              {capitalize(listing.offerSkill)}
+            </Text>
+            <View style={styles.heroCategoryChip}>
+              <Text style={styles.heroCategoryChipText}>{listing.offerCategory || 'Skill'}</Text>
             </View>
           </View>
         )}
-
-        <TouchableOpacity
-          style={[styles.circleButtonBase, styles.backButtonPosition, { top: insets.top + 8 }]}
-          onPress={() => navigation.goBack()}
-          activeOpacity={0.8}
-        >
-          <BackIcon />
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={[styles.circleButtonBase, styles.shareButtonPosition, { top: insets.top + 8 }]}
-          onPress={handleShare}
-          activeOpacity={0.8}
-        >
-          <ShareIcon />
-        </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <View style={styles.heroTransition} />
+
+      <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* ── Part 2: Poster info row ─────────────────────────────────── */}
         <View style={styles.posterRow}>
-          {listing.userPhoto ? (
-            <Image source={{ uri: listing.userPhoto }} style={styles.posterAvatarImage} resizeMode="cover" />
+          {posterPhoto ? (
+            <Image source={{ uri: posterPhoto }} style={styles.posterAvatarImage} resizeMode="cover" />
           ) : (
             <View style={styles.posterAvatarFallback}>
-              <Text style={styles.posterAvatarInitial}>{getInitials(listing.userName)}</Text>
+              <Text style={styles.posterAvatarInitial}>{getInitials(posterName)}</Text>
             </View>
           )}
 
           <View style={styles.posterInfo}>
             <Text style={styles.posterName} numberOfLines={1}>
-              {listing.userName}
+              {posterName}
             </Text>
-            <View style={styles.posterCityRow}>
-              <Text style={styles.posterCityText}>📍 {[listing.city, listing.country].filter(Boolean).join(', ')}</Text>
+            <View style={styles.posterLocationRow}>
+              <LocationPinIcon color={theme.textMuted} />
+              <Text style={styles.posterCity}>{[listing.city, listing.country].filter(Boolean).join(', ')}</Text>
             </View>
             <View style={styles.posterRatingRow}>
               <StarRow rating={posterRating} styles={styles} />
@@ -453,7 +476,7 @@ const ListingDetailScreen = ({ navigation, route }) => {
             <View style={styles.swapBoxOffer}>
               <Text style={styles.swapBoxLabel}>THEY OFFER</Text>
               <Text style={styles.swapOfferSkillText} numberOfLines={1}>
-                {listing.offerSkill}
+                {capitalize(listing.offerSkill)}
               </Text>
               <View style={styles.swapOfferBadge}>
                 <Text style={styles.swapOfferBadgeText}>{listing.offerLevel || 'Any level'}</Text>
@@ -467,7 +490,7 @@ const ListingDetailScreen = ({ navigation, route }) => {
             <View style={styles.swapBoxWant}>
               <Text style={styles.swapBoxLabel}>THEY WANT</Text>
               <Text style={styles.swapWantSkillText} numberOfLines={1}>
-                {listing.wantSkill}
+                {capitalize(listing.wantSkill)}
               </Text>
               <View style={styles.swapWantBadge}>
                 <Text style={styles.swapWantBadgeText}>{listing.flexibility || 'Open'}</Text>
@@ -570,10 +593,10 @@ const ListingDetailScreen = ({ navigation, route }) => {
                   </View>
 
                   <Text style={styles.similarOfferSkill} numberOfLines={1}>
-                    {item.offerSkill}
+                    {capitalize(item.offerSkill)}
                   </Text>
                   <Text style={styles.similarWantSkill} numberOfLines={1}>
-                    ↔ {item.wantSkill}
+                    ↔ {capitalize(item.wantSkill)}
                   </Text>
 
                   <View style={styles.similarBottomRow}>
