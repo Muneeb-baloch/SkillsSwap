@@ -9,10 +9,12 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "icon": "./assets/expo.icon",
-      "bundleIdentifier": "com.skillsswap.app"
+      "bundleIdentifier": "com.skillsswap.app",
+      "googleServicesFile": "./GoogleService-Info.plist"
     },
     "android": {
       "package": "com.skillsswap.app",
+      "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -36,6 +38,7 @@
           }
         }
       ],
+      "@react-native-google-signin/google-signin"
     ],
     "experiments": {
       "reactCompiler": true

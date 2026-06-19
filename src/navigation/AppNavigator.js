@@ -4,6 +4,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import SplashScreen       from '../screens/auth/SplashScreen';
 import LoginScreen        from '../screens/auth/LoginScreen';
 import RegisterScreen     from '../screens/auth/RegisterScreen';
+import VerifyEmailScreen  from '../screens/auth/VerifyEmailScreen';
 
 import TabNavigator       from './TabNavigator';
 
@@ -15,6 +16,7 @@ import LeaveReviewScreen   from '../screens/stack/LeaveReviewScreen';
 import SettingsScreen      from '../screens/stack/SettingsScreen';
 import MyListingsScreen    from '../screens/stack/MyListingsScreen';
 import EditProfileScreen   from '../screens/stack/EditProfileScreen';
+import BarterHistoryScreen from '../screens/stack/BarterHistoryScreen';
 
 const Stack = createStackNavigator();
 
@@ -24,6 +26,7 @@ const AppNavigator = () => (
     <Stack.Screen name="Splash"   component={SplashScreen} />
     <Stack.Screen name="Login"    component={LoginScreen} />
     <Stack.Screen name="Register" component={RegisterScreen} />
+    <Stack.Screen name="VerifyEmail" component={VerifyEmailScreen} />
 
     {/* Main app — tabs live here; LoginScreen calls navigation.replace('Main') */}
     <Stack.Screen name="Main" component={TabNavigator} />
@@ -37,6 +40,7 @@ const AppNavigator = () => (
     <Stack.Screen name="Settings"      component={SettingsScreen} />
     <Stack.Screen name="MyListings"    component={MyListingsScreen} />
     <Stack.Screen name="EditProfile"   component={EditProfileScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="BarterHistory" component={BarterHistoryScreen} />
   </Stack.Navigator>
 );
 

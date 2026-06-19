@@ -7,12 +7,15 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { Ionicons, FontAwesome } from '@expo/vector-icons';
-import { signInWithEmailAndPassword, GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
-import { auth } from '../../config/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../../config/firebase';
 import Logo from '../../components/Logo';
 import { useTheme } from '../../theme/ThemeContext';
+import { signInWithGoogle, signInWithApple, ensureUserDocument, SIGNIN_CANCELLED } from '../../utils/socialAuth';
 import getStyles from './LoginScreen.styles';
 
 const LoginScreen = ({ navigation }) => {
@@ -43,7 +46,16 @@ const LoginScreen = ({ navigation }) => {
     if (!validate()) return;
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, email.trim(), password);
+      const trimmedEmail = email.trim();
+      const credential = await signInWithEmailAndPassword(auth, trimmedEmail, password);
+
+      // Email/password accounts must finish the 6-digit code flow before
+      // getting into the app — Google/Apple accounts skip this entirely.
+      const snap = await getDoc(doc(db, 'users', credential.user.uid));
+      if (snap.exists() && snap.data().emailVerified === false) {
+        navigation.replace('VerifyEmail', { email: trimmedEmail });
+        return;
+      }
       navigation.replace('Main');
     } catch (e) {
       setError(e.message || 'Sign in failed. Please try again.');
@@ -56,11 +68,29 @@ const LoginScreen = ({ navigation }) => {
     setError('');
     setLoading(true);
     try {
-      const provider = new GoogleAuthProvider();
-      await signInWithPopup(auth, provider);
+      const { userCredential } = await signInWithGoogle();
+      await ensureUserDocument(userCredential);
       navigation.replace('Main');
     } catch (e) {
-      setError(e.message || 'Google sign in failed. Please try again.');
+      if (e.message !== SIGNIN_CANCELLED) {
+        setError(e.message || 'Google sign in failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApple = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const { userCredential, displayName } = await signInWithApple();
+      await ensureUserDocument(userCredential, displayName);
+      navigation.replace('Main');
+    } catch (e) {
+      if (e.code !== 'ERR_REQUEST_CANCELED') {
+        setError(e.message || 'Apple sign in failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -147,6 +177,13 @@ const LoginScreen = ({ navigation }) => {
             </View>
             <Text style={styles.googleButtonText}>Continue with Google</Text>
           </TouchableOpacity>
+
+          {Platform.OS === 'ios' && (
+            <TouchableOpacity style={styles.appleButton} onPress={handleApple} disabled={loading}>
+              <Ionicons name="logo-apple" size={18} color="#FFFFFF" />
+              <Text style={styles.appleButtonText}>Continue with Apple</Text>
+            </TouchableOpacity>
+          )}
 
           <View style={styles.bottomRow}>
             <Text style={styles.bottomText}>{"Don't have an account?  "}</Text>

@@ -442,6 +442,12 @@ const getStyles = theme =>
       fontSize: 13,
       marginTop: 6,
     },
+    pendingReviewText: {
+      color: '#F5C518',
+      fontSize: 11,
+      fontWeight: '600',
+      marginTop: 6,
+    },
     emptyReviewsText: {
       color: theme.textMuted,
       fontSize: 14,

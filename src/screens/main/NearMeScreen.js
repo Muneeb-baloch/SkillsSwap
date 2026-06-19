@@ -2,18 +2,111 @@ import React, { useEffect, useState, useCallback } from 'react';
 import {
   View,
   Text,
+  TextInput,
   FlatList,
   TouchableOpacity,
   ActivityIndicator,
   SafeAreaView,
   StatusBar,
+  Image,
 } from 'react-native';
 import * as Location from 'expo-location';
+import { Ionicons } from '@expo/vector-icons';
 import Slider from '@react-native-community/slider';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { collection, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../../config/firebase';
 import { useTheme } from '../../theme/ThemeContext';
 import getStyles from './NearMeScreen.styles';
+
+function getInitials(name) {
+  if (!name) return '?';
+  return name
+    .trim()
+    .split(/\s+/)
+    .map(w => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2);
+}
+
+function capitalize(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
+}
+
+// Single nearby listing card. Defined as its own component so it can resolve
+// the poster's real name (older listings may have a missing/'Anonymous' name).
+const NearbyCard = ({ item, navigation, styles }) => {
+  const hasName = item.userName && item.userName !== 'Anonymous';
+  const [resolvedName, setResolvedName] = useState(hasName ? item.userName : '');
+
+  useEffect(() => {
+    if (hasName || !item.userId) return;
+    let active = true;
+    getDoc(doc(db, 'users', item.userId))
+      .then(snap => {
+        if (active && snap.exists() && snap.data().name) setResolvedName(snap.data().name);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [hasName, item.userId]);
+
+  const displayName = resolvedName || 'User';
+  const initials = getInitials(displayName);
+
+  const goToProfile = () => navigation.navigate('UserProfile', { userId: item.userId });
+  const goToDetail = () => navigation.navigate('ListingDetail', { listing: item });
+
+  return (
+    <View style={styles.card}>
+      {/* Top row: avatar + name/city + distance */}
+      <View style={styles.cardTopRow}>
+        <TouchableOpacity style={styles.avatarWrapper} onPress={goToProfile} activeOpacity={0.7}>
+          {item.userPhoto ? (
+            <Image source={{ uri: item.userPhoto }} style={styles.avatarImage} />
+          ) : (
+            <View style={styles.avatar}>
+              <Text style={styles.avatarText}>{initials}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+
+        <TouchableOpacity style={styles.userInfo} onPress={goToProfile} activeOpacity={0.7}>
+          <Text style={styles.userName} numberOfLines={1}>{displayName}</Text>
+          <Text style={styles.userCity} numberOfLines={1}>{item.city || ''}</Text>
+        </TouchableOpacity>
+
+        <View style={styles.distanceBadge}>
+          <Text style={styles.distanceText}>{item.distance} km away</Text>
+        </View>
+      </View>
+
+      <View style={styles.divider} />
+
+      {/* Offer */}
+      <View style={styles.skillRow}>
+        <Text style={styles.skillLabel}>Offering</Text>
+        <Text style={styles.offerSkill} numberOfLines={1}>{capitalize(item.offerSkill)}</Text>
+      </View>
+
+      {/* Want */}
+      <View style={styles.skillRow}>
+        <Text style={styles.skillLabel}>Wants</Text>
+        <Text style={styles.wantSkill} numberOfLines={1}>{capitalize(item.wantSkill)}</Text>
+      </View>
+
+      {/* Bottom row: CTA */}
+      <View style={styles.cardBottomRow}>
+        <View />
+        <TouchableOpacity onPress={goToDetail} activeOpacity={0.7}>
+          <Text style={styles.requestSwapText}>Request swap →</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+};
 
 const haversineDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371;
@@ -38,15 +131,62 @@ const NearMeScreen = ({ navigation }) => {
   const [listings, setListings]               = useState([]);
   const [nearbyListings, setNearbyListings]   = useState([]);
   const [loading, setLoading]                 = useState(false);
+  const [locationLabel, setLocationLabel]     = useState('');
+  const [editingCity, setEditingCity]         = useState(false);
+  const [cityInput, setCityInput]             = useState('');
+  const [geocoding, setGeocoding]             = useState(false);
+  const [geoError, setGeoError]               = useState('');
+
+  // Turn a set of coords into a readable "City, Country" label.
+  const labelFromCoords = useCallback(async (lat, lng) => {
+    try {
+      const places = await Location.reverseGeocodeAsync({ latitude: lat, longitude: lng });
+      const p = places?.[0];
+      if (p) {
+        const city = p.city || p.subregion || p.region || '';
+        const country = p.country || '';
+        setLocationLabel([city, country].filter(Boolean).join(', '));
+      }
+    } catch {
+      // Reverse geocode is best-effort; leave any existing label in place.
+    }
+  }, []);
 
   const requestPermission = useCallback(async () => {
+    setGeoError('');
     const { status } = await Location.requestForegroundPermissionsAsync();
     setPermissionStatus(status === 'granted' ? 'granted' : 'denied');
     if (status === 'granted') {
       const loc = await Location.getCurrentPositionAsync({});
       setUserLocation({ lat: loc.coords.latitude, lng: loc.coords.longitude });
+      setEditingCity(false);
+      labelFromCoords(loc.coords.latitude, loc.coords.longitude);
     }
-  }, []);
+  }, [labelFromCoords]);
+
+  // Forward-geocode a manually typed city into coords + re-run the filter.
+  const applyManualCity = useCallback(async () => {
+    const term = cityInput.trim();
+    if (!term) return;
+    setGeocoding(true);
+    setGeoError('');
+    try {
+      const results = await Location.geocodeAsync(term);
+      const r = results?.[0];
+      if (r) {
+        setUserLocation({ lat: r.latitude, lng: r.longitude });
+        setLocationLabel(term);
+        setEditingCity(false);
+        setCityInput('');
+      } else {
+        setGeoError('Could not find that location. Try another city.');
+      }
+    } catch {
+      setGeoError('Could not look up that location. Try again.');
+    } finally {
+      setGeocoding(false);
+    }
+  }, [cityInput]);
 
   // Request permission on mount
   useEffect(() => {
@@ -78,7 +218,9 @@ const NearMeScreen = ({ navigation }) => {
       setNearbyListings([]);
       return;
     }
+    const myUid = auth.currentUser?.uid;
     const filtered = listings
+      .filter(l => l.userId !== myUid) // don't show the user their own listings
       .filter(l => l.lat != null && l.lng != null)
       .map(l => ({
         ...l,
@@ -90,37 +232,7 @@ const NearMeScreen = ({ navigation }) => {
   }, [userLocation, radius, listings]);
 
   const renderCard = ({ item }) => (
-    <TouchableOpacity
-      style={styles.card}
-      onPress={() => navigation.navigate('ListingDetail', { listing: item })}
-      activeOpacity={0.75}
-    >
-      <View style={styles.cardTopRow}>
-        <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-        <View style={styles.distanceBadge}>
-          <Text style={styles.distanceText}>{item.distance} km away</Text>
-        </View>
-      </View>
-
-      {item.description ? (
-        <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
-      ) : null}
-
-      {Array.isArray(item.skills) && item.skills.length > 0 && (
-        <View style={styles.skillTagRow}>
-          {item.skills.slice(0, 3).map((s, i) => (
-            <View key={i} style={styles.skillTag}>
-              <Text style={styles.skillTagText}>{s}</Text>
-            </View>
-          ))}
-        </View>
-      )}
-
-      <View style={styles.cardFooter}>
-        <Text style={styles.cardUser}>{item.userName || 'Anonymous'}</Text>
-        <Text style={styles.cardCity}>{item.city || ''}</Text>
-      </View>
-    </TouchableOpacity>
+    <NearbyCard item={item} navigation={navigation} styles={styles} />
   );
 
   const renderPermissionState = () => {
@@ -136,6 +248,68 @@ const NearMeScreen = ({ navigation }) => {
 
     return null;
   };
+
+  // Location label + manual-entry row, shown below the radius slider.
+  const renderLocationRow = () => (
+    <View style={styles.locationCard}>
+      {editingCity ? (
+        <>
+          <View style={styles.cityInputRow}>
+            <TextInput
+              style={styles.cityInput}
+              placeholder="Enter a city e.g. Karachi"
+              placeholderTextColor={theme.textMuted}
+              value={cityInput}
+              onChangeText={setCityInput}
+              autoFocus
+              autoCorrect={false}
+              returnKeyType="search"
+              onSubmitEditing={applyManualCity}
+            />
+            <TouchableOpacity
+              style={styles.cityGoButton}
+              onPress={applyManualCity}
+              disabled={geocoding}
+              activeOpacity={0.8}
+            >
+              {geocoding ? (
+                <ActivityIndicator color="#FFFFFF" size="small" />
+              ) : (
+                <Text style={styles.cityGoText}>Go</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+          {geoError ? <Text style={styles.geoErrorText}>{geoError}</Text> : null}
+          <TouchableOpacity
+            style={[styles.useGpsButton, styles.useGpsRow]}
+            onPress={requestPermission}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="locate-outline" size={14} color={theme.tealLight} />
+            <Text style={styles.useGpsText}> Use current location</Text>
+          </TouchableOpacity>
+        </>
+      ) : (
+        <View style={styles.locationRow}>
+          <View style={styles.locationLabelRow}>
+            <Ionicons name="location-outline" size={15} color={theme.textPrimary} />
+            <Text style={styles.locationLabel} numberOfLines={1}>
+              {' '}Using: {locationLabel || 'your location'}
+            </Text>
+          </View>
+          <TouchableOpacity
+            onPress={() => {
+              setEditingCity(true);
+              setGeoError('');
+            }}
+            activeOpacity={0.7}
+          >
+            <Text style={styles.changeText}>Change</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
@@ -156,9 +330,17 @@ const NearMeScreen = ({ navigation }) => {
         </View>
       )}
 
-      {permissionStatus === 'denied' && renderPermissionState()}
+      {permissionStatus === 'denied' && !userLocation && (
+        <>
+          {renderPermissionState()}
+          <View style={styles.radiusContainer}>
+            <Text style={styles.radiusLabel}>Or search by city</Text>
+          </View>
+          {renderLocationRow()}
+        </>
+      )}
 
-      {permissionStatus === 'granted' && (
+      {(permissionStatus === 'granted' || (permissionStatus === 'denied' && userLocation)) && (
         <>
           <View style={styles.radiusContainer}>
             <View style={styles.radiusRow}>
@@ -177,6 +359,8 @@ const NearMeScreen = ({ navigation }) => {
               thumbTintColor={theme.purple}
             />
           </View>
+
+          {renderLocationRow()}
 
           {!loading && (
             <Text style={styles.resultsCount}>

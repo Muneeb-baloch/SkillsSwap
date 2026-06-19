@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
 import { View, Text } from 'react-native';
 import { onAuthStateChanged } from 'firebase/auth';
-import { auth } from '../../config/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../../config/firebase';
 import Logo from '../../components/Logo';
 import { useTheme } from '../../theme/ThemeContext';
 import getStyles from './SplashScreen.styles';
@@ -19,8 +20,25 @@ const SplashScreen = ({ navigation }) => {
     // the persisted session from AsyncStorage, so `user` here reflects
     // the real logged-in state instead of the momentarily-null currentUser.
     const unsubscribe = onAuthStateChanged(auth, (user) => {
-      minimumSplash.then(() => {
-        navigation.replace(user ? 'Main' : 'Login');
+      minimumSplash.then(async () => {
+        if (!user) {
+          navigation.replace('Login');
+          return;
+        }
+        // A returning user who never finished the email-OTP step (e.g.
+        // closed the app mid-verification) should land back on that
+        // screen, not get full access. Defaults to Main on any fetch
+        // error so a transient Firestore blip can't lock someone out.
+        try {
+          const snap = await getDoc(doc(db, 'users', user.uid));
+          if (snap.exists() && snap.data().emailVerified === false) {
+            navigation.replace('VerifyEmail', { email: user.email });
+            return;
+          }
+        } catch {
+          // fall through to Main
+        }
+        navigation.replace('Main');
       });
     });
 

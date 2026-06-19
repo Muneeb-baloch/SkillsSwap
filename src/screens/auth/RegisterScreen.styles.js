@@ -78,6 +78,62 @@ const getStyles = theme =>
       fontWeight: '700',
       letterSpacing: 0.3,
     },
+    dividerRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: 18,
+    },
+    dividerLine: {
+      flex: 1,
+      height: 1,
+      backgroundColor: 'rgba(136,135,128,0.25)',
+    },
+    dividerText: {
+      fontSize: 13,
+      color: theme.textMuted,
+      marginHorizontal: 14,
+    },
+    // Google's button is brand-locked to a white pill with dark text/icon —
+    // stays fixed regardless of app theme.
+    googleButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#FFFFFF',
+      height: 54,
+      borderRadius: 14,
+      marginBottom: 12,
+      gap: 10,
+    },
+    googleIconCircle: {
+      width: 30,
+      height: 30,
+      borderRadius: 15,
+      backgroundColor: '#1a1a2e',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    googleButtonText: {
+      color: '#1a1a2e',
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    // Apple's HIG requires the black pill / white logo+text combo.
+    appleButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#000000',
+      height: 54,
+      borderRadius: 14,
+      marginBottom: 24,
+      gap: 8,
+    },
+    appleButtonText: {
+      color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '600',
+    },
     bottomRow: {
       flexDirection: 'row',
       justifyContent: 'center',

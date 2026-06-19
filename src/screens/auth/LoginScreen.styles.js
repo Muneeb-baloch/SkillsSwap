@@ -118,7 +118,7 @@ const getStyles = theme =>
       backgroundColor: '#FFFFFF',
       height: 54,
       borderRadius: 14,
-      marginBottom: 36,
+      marginBottom: 12,
       gap: 10,
     },
     googleIconCircle: {
@@ -136,6 +136,22 @@ const getStyles = theme =>
     },
     googleButtonText: {
       color: '#1a1a2e',
+      fontSize: 15,
+      fontWeight: '600',
+    },
+    // Apple's HIG requires the black pill / white logo+text combo.
+    appleButton: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: '#000000',
+      height: 54,
+      borderRadius: 14,
+      marginBottom: 36,
+      gap: 8,
+    },
+    appleButtonText: {
+      color: '#FFFFFF',
       fontSize: 15,
       fontWeight: '600',
     },

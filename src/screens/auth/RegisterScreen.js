@@ -7,13 +7,16 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, FontAwesome } from '@expo/vector-icons';
 import CityPicker from '../../components/CityPicker';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../config/firebase';
 import { useTheme } from '../../theme/ThemeContext';
+import { signInWithGoogle, signInWithApple, ensureUserDocument, SIGNIN_CANCELLED } from '../../utils/socialAuth';
+import { generateOtpCode, sendOtpEmail, OTP_EXPIRY_MINUTES } from '../../utils/emailVerification';
 import getStyles from './RegisterScreen.styles';
 
 const RegisterScreen = ({ navigation }) => {
@@ -48,22 +51,69 @@ const RegisterScreen = ({ navigation }) => {
     if (!validate()) return;
     setLoading(true);
     try {
-      const credential = await createUserWithEmailAndPassword(auth, email.trim(), password);
+      const trimmedEmail = email.trim();
+      const credential = await createUserWithEmailAndPassword(auth, trimmedEmail, password);
       await updateProfile(credential.user, { displayName: name.trim() });
       await setDoc(doc(db, 'users', credential.user.uid), {
-        name:        name.trim(),
-        city:        city.trim(),
-        email:       email.trim(),
-        skills:      [],
-        wants:       [],
-        photoURL:    '',
-        rating:      0,
-        reviewCount: 0,
-        createdAt:   new Date(),
+        name:          name.trim(),
+        city:          city.trim(),
+        email:         trimmedEmail,
+        skills:        [],
+        wants:         [],
+        photoURL:      '',
+        rating:        0,
+        reviewCount:   0,
+        emailVerified: false,
+        createdAt:     new Date(),
       });
-      navigation.replace('Main');
+
+      // Email/password accounts must confirm ownership of the email via a
+      // 6-digit code before they get full app access (Google/Apple sign-ins
+      // skip this since the provider already verified the email).
+      const code = generateOtpCode();
+      await setDoc(doc(db, 'emailVerifications', credential.user.uid), {
+        code,
+        expiresAt: new Date(Date.now() + OTP_EXPIRY_MINUTES * 60 * 1000),
+        attempts: 0,
+        createdAt: new Date(),
+      });
+      await sendOtpEmail(trimmedEmail, code);
+
+      navigation.replace('VerifyEmail', { email: trimmedEmail });
     } catch (e) {
       setError(e.message || 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleGoogle = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const { userCredential } = await signInWithGoogle();
+      await ensureUserDocument(userCredential);
+      navigation.replace('Main');
+    } catch (e) {
+      if (e.message !== SIGNIN_CANCELLED) {
+        setError(e.message || 'Google sign in failed. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleApple = async () => {
+    setError('');
+    setLoading(true);
+    try {
+      const { userCredential, displayName } = await signInWithApple();
+      await ensureUserDocument(userCredential, displayName);
+      navigation.replace('Main');
+    } catch (e) {
+      if (e.code !== 'ERR_REQUEST_CANCELED') {
+        setError(e.message || 'Apple sign in failed. Please try again.');
+      }
     } finally {
       setLoading(false);
     }
@@ -169,6 +219,26 @@ const RegisterScreen = ({ navigation }) => {
               : <Text style={styles.primaryButtonText}>Create account</Text>
             }
           </TouchableOpacity>
+
+          <View style={styles.dividerRow}>
+            <View style={styles.dividerLine} />
+            <Text style={styles.dividerText}>or</Text>
+            <View style={styles.dividerLine} />
+          </View>
+
+          <TouchableOpacity style={styles.googleButton} onPress={handleGoogle} disabled={loading}>
+            <View style={styles.googleIconCircle}>
+              <FontAwesome name="google" size={15} color={theme.purple} />
+            </View>
+            <Text style={styles.googleButtonText}>Continue with Google</Text>
+          </TouchableOpacity>
+
+          {Platform.OS === 'ios' && (
+            <TouchableOpacity style={styles.appleButton} onPress={handleApple} disabled={loading}>
+              <Ionicons name="logo-apple" size={18} color="#FFFFFF" />
+              <Text style={styles.appleButtonText}>Continue with Apple</Text>
+            </TouchableOpacity>
+          )}
 
           <View style={styles.bottomRow}>
             <Text style={styles.bottomText}>{'Already have an account?  '}</Text>

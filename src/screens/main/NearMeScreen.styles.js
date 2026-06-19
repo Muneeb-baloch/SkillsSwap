@@ -88,6 +88,82 @@ const getStyles = theme =>
       height: 36,
     },
 
+    // Location label + manual entry
+    locationCard: {
+      marginHorizontal: 16,
+      marginBottom: 10,
+      backgroundColor: theme.cardBg,
+      borderRadius: 12,
+      padding: 14,
+    },
+    locationRow: {
+      flexDirection: 'row',
+      justifyContent: 'space-between',
+      alignItems: 'center',
+    },
+    locationLabelRow: {
+      flex: 1,
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginRight: 10,
+    },
+    locationLabel: {
+      flexShrink: 1,
+      fontSize: 13,
+      color: theme.textPrimary,
+      fontWeight: '500',
+    },
+    changeText: {
+      fontSize: 13,
+      color: theme.purpleLight,
+      fontWeight: '700',
+    },
+    cityInputRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 8,
+    },
+    cityInput: {
+      flex: 1,
+      height: 44,
+      backgroundColor: theme.inputBg,
+      borderRadius: 10,
+      paddingHorizontal: 12,
+      color: theme.textPrimary,
+      fontSize: 14,
+    },
+    cityGoButton: {
+      height: 44,
+      paddingHorizontal: 18,
+      borderRadius: 10,
+      backgroundColor: theme.purple,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    cityGoText: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    geoErrorText: {
+      color: theme.error,
+      fontSize: 12,
+      marginTop: 8,
+    },
+    useGpsButton: {
+      marginTop: 12,
+      alignSelf: 'flex-start',
+    },
+    useGpsRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    useGpsText: {
+      fontSize: 13,
+      color: theme.tealLight,
+      fontWeight: '600',
+    },
+
     // Results count
     resultsCount: {
       fontSize: 13,
@@ -105,70 +181,96 @@ const getStyles = theme =>
     // Card
     card: {
       backgroundColor: theme.cardBg,
-      borderRadius: 14,
-      padding: 14,
+      borderRadius: 16,
+      padding: 16,
       marginBottom: 12,
     },
     cardTopRow: {
       flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'flex-start',
-      marginBottom: 6,
+      alignItems: 'center',
+      marginBottom: 12,
     },
-    cardTitle: {
+    avatarWrapper: {
+      marginRight: 10,
+    },
+    avatar: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: theme.purple,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    avatarImage: {
+      width: 44,
+      height: 44,
+      borderRadius: 22,
+      backgroundColor: theme.inputBg,
+    },
+    avatarText: {
+      color: '#FFFFFF',
       fontSize: 15,
-      fontWeight: '700',
-      color: theme.textPrimary,
+      fontWeight: 'bold',
+    },
+    userInfo: {
       flex: 1,
-      marginRight: 8,
+    },
+    userName: {
+      color: theme.textPrimary,
+      fontSize: 14,
+      fontWeight: 'bold',
+    },
+    userCity: {
+      color: theme.textMuted,
+      fontSize: 12,
+      marginTop: 2,
     },
     distanceBadge: {
       backgroundColor: 'rgba(29,158,117,0.15)',
       borderRadius: 20,
       paddingHorizontal: 8,
       paddingVertical: 3,
+      marginLeft: 8,
     },
     distanceText: {
       fontSize: 11,
       color: theme.tealLight,
       fontWeight: '600',
     },
-    cardDesc: {
-      fontSize: 13,
+    divider: {
+      height: 1,
+      backgroundColor: theme.divider,
+      marginBottom: 12,
+    },
+    skillRow: {
+      marginBottom: 8,
+    },
+    skillLabel: {
       color: theme.textMuted,
-      marginBottom: 10,
-      lineHeight: 18,
-    },
-    cardFooter: {
-      flexDirection: 'row',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-    },
-    cardUser: {
-      fontSize: 12,
-      color: theme.purpleLight,
-      fontWeight: '500',
-    },
-    cardCity: {
-      fontSize: 12,
-      color: theme.textMuted,
-    },
-    skillTagRow: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: 6,
-      marginBottom: 10,
-    },
-    skillTag: {
-      backgroundColor: 'rgba(83,74,183,0.18)',
-      borderRadius: 20,
-      paddingHorizontal: 10,
-      paddingVertical: 3,
-    },
-    skillTagText: {
       fontSize: 11,
+      textTransform: 'uppercase',
+      marginBottom: 2,
+      letterSpacing: 0.4,
+    },
+    offerSkill: {
+      color: theme.textPrimary,
+      fontSize: 15,
+      fontWeight: 'bold',
+    },
+    wantSkill: {
       color: theme.purpleLight,
-      fontWeight: '500',
+      fontSize: 14,
+    },
+    cardBottomRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginTop: 4,
+    },
+    requestSwapText: {
+      color: theme.teal,
+      fontSize: 13,
+      fontWeight: 'bold',
     },
 
     // States

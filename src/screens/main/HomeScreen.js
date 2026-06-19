@@ -19,6 +19,8 @@ import {
   limit,
   startAfter,
   getDocs,
+  doc,
+  getDoc,
 } from 'firebase/firestore';
 import { db } from '../../config/firebase';
 import { useTheme } from '../../theme/ThemeContext';
@@ -79,10 +81,28 @@ const SkeletonCard = ({ styles }) => (
 const ListingCard = ({ item, navigation, styles, theme }) => {
   // Listings posted before the registration displayName fix have the literal
   // string 'Anonymous' saved, so a falsy check alone won't catch those.
-  const displayName = item.userName && item.userName !== 'Anonymous' ? item.userName : 'User';
+  const hasName = item.userName && item.userName !== 'Anonymous';
+  const [resolvedName, setResolvedName] = useState(hasName ? item.userName : '');
+  const [imageLoading, setImageLoading] = useState(false);
+
+  // For older listings missing a real name, fall back to the live name on the
+  // user's profile document.
+  useEffect(() => {
+    if (hasName || !item.userId) return;
+    let active = true;
+    getDoc(doc(db, 'users', item.userId))
+      .then(snap => {
+        if (active && snap.exists() && snap.data().name) setResolvedName(snap.data().name);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [hasName, item.userId]);
+
+  const displayName = resolvedName || 'User';
   const initials = getInitials(displayName);
   const ago = timeAgo(item.createdAt);
-  const [imageLoading, setImageLoading] = useState(false);
 
   const goToProfile = () =>
     navigation.navigate('UserProfile', { userId: item.userId });

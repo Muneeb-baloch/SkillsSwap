@@ -233,41 +233,51 @@ const ProfileScreen = ({ navigation }) => {
     }
     setLoading(true);
 
-    const [userResult, listingsResult, reviewsResult, swapsResult, activeListingsResult] =
-      await Promise.allSettled([
-        getDoc(doc(db, 'users', currentUser.uid)),
-        getDocs(
-          query(
-            collection(db, 'listings'),
-            where('userId', '==', currentUser.uid),
-            where('active', '==', true),
-            orderBy('createdAt', 'desc'),
-            limit(2),
-          ),
+    const [
+      userResult,
+      listingsResult,
+      reviewsResult,
+      swapsAsRequesterResult,
+      swapsAsOwnerResult,
+      activeListingsResult,
+    ] = await Promise.allSettled([
+      getDoc(doc(db, 'users', currentUser.uid)),
+      getDocs(
+        query(
+          collection(db, 'listings'),
+          where('userId', '==', currentUser.uid),
+          where('active', '==', true),
+          orderBy('createdAt', 'desc'),
+          limit(2),
         ),
-        getDocs(
-          query(
-            collection(db, 'reviews'),
-            where('toUserId', '==', currentUser.uid),
-            orderBy('createdAt', 'desc'),
-            limit(2),
-          ),
+      ),
+      // No orderBy here on purpose — combining it with the toUserId filter
+      // would need a composite index. Sort client-side instead.
+      getDocs(query(collection(db, 'reviews'), where('toUserId', '==', currentUser.uid))),
+      // A completed swap may have either ended this user's request or one
+      // sent to them, so both directions need to be counted.
+      getDocs(
+        query(
+          collection(db, 'barterRequests'),
+          where('fromUserId', '==', currentUser.uid),
+          where('status', '==', 'completed'),
         ),
-        getDocs(
-          query(
-            collection(db, 'barterRequests'),
-            where('toUserId', '==', currentUser.uid),
-            where('status', '==', 'completed'),
-          ),
+      ),
+      getDocs(
+        query(
+          collection(db, 'barterRequests'),
+          where('toUserId', '==', currentUser.uid),
+          where('status', '==', 'completed'),
         ),
-        getDocs(
-          query(
-            collection(db, 'listings'),
-            where('userId', '==', currentUser.uid),
-            where('active', '==', true),
-          ),
+      ),
+      getDocs(
+        query(
+          collection(db, 'listings'),
+          where('userId', '==', currentUser.uid),
+          where('active', '==', true),
         ),
-      ]);
+      ),
+    ]);
 
     if (userResult.status === 'fulfilled') {
       setUserData(userResult.value.exists() ? userResult.value.data() : null);
@@ -289,22 +299,22 @@ const ProfileScreen = ({ navigation }) => {
     }
 
     if (reviewsResult.status === 'fulfilled') {
-      setMyReviews(reviewsResult.value.docs.map(d => ({ id: d.id, ...d.data() })));
-      setReviewsCount(reviewsResult.value.size);
+      const allReviews = reviewsResult.value.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0));
+      setMyReviews(allReviews.slice(0, 2));
+      setReviewsCount(allReviews.length);
     } else {
-      // Also expected if the 'reviews' collection doesn't exist yet at all.
-      console.warn(`
-  ⚠️  FIRESTORE INDEX NEEDED (or 'reviews' collection not created yet)
-  Go to Firebase Console → Firestore → Indexes → Composite
-  Add index:
-    Collection: reviews
-    Fields: toUserId (Ascending), createdAt (Descending)
-`);
+      console.warn('Profile fetch error (reviews):', reviewsResult.reason);
       setMyReviews([]);
       setReviewsCount(0);
     }
 
-    setSwapsCount(swapsResult.status === 'fulfilled' ? swapsResult.value.size : 0);
+    const swapsAsRequester =
+      swapsAsRequesterResult.status === 'fulfilled' ? swapsAsRequesterResult.value.size : 0;
+    const swapsAsOwner =
+      swapsAsOwnerResult.status === 'fulfilled' ? swapsAsOwnerResult.value.size : 0;
+    setSwapsCount(swapsAsRequester + swapsAsOwner);
     setActiveListingsCount(
       activeListingsResult.status === 'fulfilled' ? activeListingsResult.value.size : 0,
     );
@@ -642,6 +652,11 @@ const ProfileScreen = ({ navigation }) => {
                   </View>
                   <Text style={styles.reviewTime}>{timeAgo(review.createdAt)}</Text>
                 </View>
+                {review.status === 'pending_confirmation' && (
+                  <Text style={styles.pendingReviewText}>
+                    Pending — visible publicly once the swap is confirmed
+                  </Text>
+                )}
                 {!!review.comment && (
                   <Text style={styles.reviewComment} numberOfLines={2} ellipsizeMode="tail">
                     {review.comment}
@@ -673,14 +688,19 @@ const ProfileScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.actionRow}
-            onPress={() => Alert.alert('Coming soon')}
+            onPress={() => navigation.navigate('BarterHistory')}
             activeOpacity={0.7}
           >
             <View style={[styles.actionIconBox, { backgroundColor: 'rgba(29,158,117,0.15)' }]}>
               <ClockIcon color={theme.teal} />
             </View>
             <Text style={styles.actionLabel}>Barter History</Text>
-            <Text style={styles.actionChevron}>›</Text>
+            <View style={styles.actionRight}>
+              <View style={styles.actionCountBadge}>
+                <Text style={styles.actionCountText}>{swapsCount}</Text>
+              </View>
+              <Text style={styles.actionChevron}>›</Text>
+            </View>
           </TouchableOpacity>
 
           <TouchableOpacity

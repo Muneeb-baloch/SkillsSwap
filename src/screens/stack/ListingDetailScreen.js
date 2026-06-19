@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -198,6 +198,8 @@ const ListingDetailScreen = ({ navigation, route }) => {
   const [posterData, setPosterData] = useState(null);
 
   const [currentUserSkills, setCurrentUserSkills] = useState([]);
+  const [skillsLoading, setSkillsLoading] = useState(true);
+  const [skillsError, setSkillsError] = useState(false);
 
   const [alreadyRequested, setAlreadyRequested] = useState(false);
   const [showRequestModal, setShowRequestModal] = useState(false);
@@ -208,6 +210,28 @@ const ListingDetailScreen = ({ navigation, route }) => {
   const [similarListings, setSimilarListings] = useState([]);
 
   const isOwnListing = !!listing && listing.userId === auth.currentUser?.uid;
+
+  // Fetch the current user's own skills (used to populate the request modal).
+  // Kept in its own callback so we can re-run it whenever the modal is opened —
+  // otherwise skills added via EditProfile after this screen mounted stay stale.
+  const fetchCurrentUserSkills = useCallback(async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) {
+      setSkillsLoading(false);
+      return;
+    }
+    setSkillsLoading(true);
+    setSkillsError(false);
+    try {
+      const snap = await getDoc(doc(db, 'users', currentUser.uid));
+      setCurrentUserSkills(snap.exists() ? snap.data().skills || [] : []);
+    } catch (err) {
+      console.error('Failed to load current user skills:', err);
+      setSkillsError(true);
+    } finally {
+      setSkillsLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (!listing) return;
@@ -232,13 +256,7 @@ const ListingDetailScreen = ({ navigation, route }) => {
     if (!currentUser || isOwnListing) return;
 
     // Fetch current user's own skills (for the request modal)
-    getDoc(doc(db, 'users', currentUser.uid))
-      .then(snap => {
-        if (snap.exists()) {
-          setCurrentUserSkills(snap.data().skills || []);
-        }
-      })
-      .catch(() => {});
+    fetchCurrentUserSkills();
 
     // Check for an existing pending/accepted request
     const checkExisting = async () => {
@@ -368,7 +386,7 @@ const ListingDetailScreen = ({ navigation, route }) => {
       setSelectedOfferSkill('');
 
       Alert.alert(
-        '🎉 Request sent!',
+        'Request sent!',
         listing.userName + " will be notified of your request. You'll hear back soon!",
         [{ text: 'Great!' }],
       );
@@ -649,7 +667,10 @@ const ListingDetailScreen = ({ navigation, route }) => {
         ) : (
           <TouchableOpacity
             style={styles.requestButton}
-            onPress={() => setShowRequestModal(true)}
+            onPress={() => {
+              fetchCurrentUserSkills();
+              setShowRequestModal(true);
+            }}
             activeOpacity={0.85}
           >
             <SwapIcon color="#FFFFFF" size={18} />
@@ -671,7 +692,20 @@ const ListingDetailScreen = ({ navigation, route }) => {
 
             <Text style={styles.modalSectionLabel}>YOU'RE OFFERING</Text>
 
-            {currentUserSkills.length === 0 ? (
+            {skillsLoading ? (
+              <View style={styles.noSkillsWarning}>
+                <ActivityIndicator color={theme.purple} />
+              </View>
+            ) : skillsError ? (
+              <View style={styles.noSkillsWarning}>
+                <Text style={styles.noSkillsWarningText}>
+                  Couldn't load your skills. Check your connection and try again.
+                </Text>
+                <TouchableOpacity onPress={fetchCurrentUserSkills} activeOpacity={0.7}>
+                  <Text style={styles.noSkillsLink}>Retry</Text>
+                </TouchableOpacity>
+              </View>
+            ) : currentUserSkills.length === 0 ? (
               <View style={styles.noSkillsWarning}>
                 <Text style={styles.noSkillsWarningText}>
                   Add skills to your profile first before requesting a swap
