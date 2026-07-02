@@ -11,7 +11,6 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Svg, Path } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import { File } from 'expo-file-system';
@@ -22,11 +21,12 @@ import {
   query,
   where,
   getDocs,
+  getCountFromServer,
   orderBy,
   limit,
   updateDoc,
 } from 'firebase/firestore';
-import { signOut, updateProfile } from 'firebase/auth';
+import { signOut, updateProfile, onAuthStateChanged } from 'firebase/auth';
 import { db, auth } from '../../config/firebase';
 import { CLOUDINARY_UPLOAD_URL, CLOUDINARY_UPLOAD_PRESET } from '../../config/cloudinary';
 import { useTheme } from '../../theme/ThemeContext';
@@ -56,6 +56,11 @@ function timeAgo(timestamp) {
   if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
   const days = Math.floor(hours / 24);
   return `${days} day${days > 1 ? 's' : ''} ago`;
+}
+
+function capitalize(str) {
+  if (!str) return '';
+  return str.charAt(0).toUpperCase() + str.slice(1);
 }
 
 function formatMemberSince(createdAt) {
@@ -121,12 +126,6 @@ const MoonIcon = ({ color, size = 20 }) => (
   </Svg>
 );
 
-const ListIcon = ({ color, size = 18 }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24">
-    <Path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" stroke={color} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
-  </Svg>
-);
-
 const ClockIcon = ({ color, size = 18 }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24">
     <Path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z" stroke={color} strokeWidth={2} fill="none" strokeLinecap="round" strokeLinejoin="round" />
@@ -189,7 +188,6 @@ const PulsingSkeleton = ({ style }) => {
 // ── Main screen ───────────────────────────────────────────────────────────────
 
 const ProfileScreen = ({ navigation }) => {
-  const insets = useSafeAreaInsets();
   const { theme, isDark, toggleTheme } = useTheme();
   const styles = getStyles(theme);
 
@@ -201,6 +199,9 @@ const ProfileScreen = ({ navigation }) => {
   const [reviewsCount, setReviewsCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  // Once data has loaded, focus-triggered refetches run silently in the
+  // background instead of blanking the screen with the skeleton again.
+  const hasLoadedRef = useRef(false);
 
   const toggleAnim = useRef(new Animated.Value(isDark ? 0 : 1)).current;
 
@@ -222,16 +223,59 @@ const ProfileScreen = ({ navigation }) => {
     outputRange: [2, 22],
   });
 
+  /*
+    REQUIRED FIRESTORE COMPOSITE INDEXES
+    (Firebase Console → Firestore → Indexes → Composite → Add index)
+
+    1. Collection: listings
+       Fields: userId (Asc), active (Asc), createdAt (Desc)
+       → "My Listings" preview below (has a no-index fallback meanwhile)
+    2. Collection: listings
+       Fields: active (Asc), createdAt (Desc)
+       → HomeScreen feed query (has a no-index fallback meanwhile)
+
+    reviews queries deliberately skip orderBy (sorted client-side),
+    so they need no composite index.
+  */
+  // "My Listings" preview: try the indexed (server-sorted) query first; if
+  // the composite index doesn't exist yet Firestore rejects it, so fall back
+  // to an equality-only query and sort the few docs client-side.
+  const fetchMyListings = async uid => {
+    try {
+      const snap = await getDocs(
+        query(
+          collection(db, 'listings'),
+          where('userId', '==', uid),
+          where('active', '==', true),
+          orderBy('createdAt', 'desc'),
+          limit(2),
+        ),
+      );
+      return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    } catch (indexErr) {
+      console.warn('Listings index missing, using fallback:', indexErr?.message);
+      const snap = await getDocs(
+        query(
+          collection(db, 'listings'),
+          where('userId', '==', uid),
+          where('active', '==', true),
+        ),
+      );
+      return snap.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => (b.createdAt?.toMillis?.() || 0) - (a.createdAt?.toMillis?.() || 0))
+        .slice(0, 2);
+    }
+  };
+
   // Each query fetched independently — a missing composite index on one
-  // (myListings / myReviews need one; the others only use equality filters,
-  // which Firestore can serve without one) shouldn't blank the whole screen.
-  const fetchProfileData = useCallback(async () => {
-    const currentUser = auth.currentUser;
-    if (!currentUser) {
+  // shouldn't blank the whole screen.
+  const fetchProfileData = useCallback(async uid => {
+    if (!uid) {
       setLoading(false);
       return;
     }
-    setLoading(true);
+    if (!hasLoadedRef.current) setLoading(true);
 
     const [
       userResult,
@@ -241,39 +285,32 @@ const ProfileScreen = ({ navigation }) => {
       swapsAsOwnerResult,
       activeListingsResult,
     ] = await Promise.allSettled([
-      getDoc(doc(db, 'users', currentUser.uid)),
-      getDocs(
-        query(
-          collection(db, 'listings'),
-          where('userId', '==', currentUser.uid),
-          where('active', '==', true),
-          orderBy('createdAt', 'desc'),
-          limit(2),
-        ),
-      ),
+      getDoc(doc(db, 'users', uid)),
+      fetchMyListings(uid),
       // No orderBy here on purpose — combining it with the toUserId filter
       // would need a composite index. Sort client-side instead.
-      getDocs(query(collection(db, 'reviews'), where('toUserId', '==', currentUser.uid))),
+      getDocs(query(collection(db, 'reviews'), where('toUserId', '==', uid))),
       // A completed swap may have either ended this user's request or one
-      // sent to them, so both directions need to be counted.
-      getDocs(
+      // sent to them, so both directions need to be counted. Server-side
+      // counts: only the number crosses the network, not the documents.
+      getCountFromServer(
         query(
           collection(db, 'barterRequests'),
-          where('fromUserId', '==', currentUser.uid),
+          where('fromUserId', '==', uid),
           where('status', '==', 'completed'),
         ),
       ),
-      getDocs(
+      getCountFromServer(
         query(
           collection(db, 'barterRequests'),
-          where('toUserId', '==', currentUser.uid),
+          where('toUserId', '==', uid),
           where('status', '==', 'completed'),
         ),
       ),
-      getDocs(
+      getCountFromServer(
         query(
           collection(db, 'listings'),
-          where('userId', '==', currentUser.uid),
+          where('userId', '==', uid),
           where('active', '==', true),
         ),
       ),
@@ -286,15 +323,9 @@ const ProfileScreen = ({ navigation }) => {
     }
 
     if (listingsResult.status === 'fulfilled') {
-      setMyListings(listingsResult.value.docs.map(d => ({ id: d.id, ...d.data() })));
+      setMyListings(listingsResult.value);
     } else {
-      console.warn(`
-  ⚠️  FIRESTORE INDEX NEEDED
-  Go to Firebase Console → Firestore → Indexes → Composite
-  Add index:
-    Collection: listings
-    Fields: userId (Ascending), active (Ascending), createdAt (Descending)
-`);
+      console.warn('Profile fetch error (listings):', listingsResult.reason);
       setMyListings([]);
     }
 
@@ -311,21 +342,42 @@ const ProfileScreen = ({ navigation }) => {
     }
 
     const swapsAsRequester =
-      swapsAsRequesterResult.status === 'fulfilled' ? swapsAsRequesterResult.value.size : 0;
+      swapsAsRequesterResult.status === 'fulfilled'
+        ? swapsAsRequesterResult.value.data().count
+        : 0;
     const swapsAsOwner =
-      swapsAsOwnerResult.status === 'fulfilled' ? swapsAsOwnerResult.value.size : 0;
+      swapsAsOwnerResult.status === 'fulfilled' ? swapsAsOwnerResult.value.data().count : 0;
     setSwapsCount(swapsAsRequester + swapsAsOwner);
     setActiveListingsCount(
-      activeListingsResult.status === 'fulfilled' ? activeListingsResult.value.size : 0,
+      activeListingsResult.status === 'fulfilled'
+        ? activeListingsResult.value.data().count
+        : 0,
     );
 
+    hasLoadedRef.current = true;
     setLoading(false);
   }, []);
 
   useEffect(() => {
-    fetchProfileData();
-    const unsubscribe = navigation.addListener('focus', fetchProfileData);
-    return unsubscribe;
+    // Firebase Auth may still be rehydrating the session on a cold start, so
+    // wait for it instead of reading auth.currentUser (possibly null) at
+    // mount time — that race left the profile empty until a manual refresh.
+    const unsubAuth = onAuthStateChanged(auth, user => {
+      if (user) fetchProfileData(user.uid);
+      else setLoading(false);
+    });
+    // Refresh when returning from MyListings/EditProfile/etc. The
+    // hasLoadedRef guard skips the very first focus event (fired on mount),
+    // which would otherwise duplicate the onAuthStateChanged fetch.
+    const unsubFocus = navigation.addListener('focus', () => {
+      if (hasLoadedRef.current && auth.currentUser) {
+        fetchProfileData(auth.currentUser.uid);
+      }
+    });
+    return () => {
+      unsubAuth();
+      unsubFocus();
+    };
   }, [navigation, fetchProfileData]);
 
   const handleChangePhoto = async () => {
@@ -474,10 +526,10 @@ const ProfileScreen = ({ navigation }) => {
 
           <Text style={styles.nameText}>{displayName}</Text>
 
-          {!!city && (
+          {!!(city || country) && (
             <View style={styles.cityRow}>
               <PinIcon color={theme.textMuted} />
-              <Text style={styles.cityText}>{country ? `${city}, ${country}` : city}</Text>
+              <Text style={styles.cityText}>{[city, country].filter(Boolean).join(', ')}</Text>
             </View>
           )}
 
@@ -522,8 +574,8 @@ const ProfileScreen = ({ navigation }) => {
           </View>
         </View>
 
-        {/* ── Section 4: Skills ────────────────────────────────────────────── */}
-        <View style={styles.skillsSection}>
+        {/* ── Section 4: Skills (compact card) ────────────────────────────── */}
+        <View style={styles.skillsCard}>
           <View style={styles.sectionHeaderRow}>
             <Text style={styles.sectionTitle}>My Skills</Text>
             <TouchableOpacity onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.7}>
@@ -533,158 +585,147 @@ const ProfileScreen = ({ navigation }) => {
 
           {hasSkills ? (
             <>
-              <View style={styles.skillsGroupOffer}>
-                <Text style={styles.skillsLabel}>OFFERING</Text>
-                <View style={styles.chipRow}>
-                  {(userData?.skills || []).map((skill, i) => (
-                    <View key={i} style={styles.chipOffer}>
-                      <Text style={styles.chipOfferText}>{skill}</Text>
-                    </View>
-                  ))}
+              {(userData?.skills?.length || 0) > 0 && (
+                <View>
+                  <Text style={styles.skillsLabel}>OFFERING</Text>
+                  <View style={styles.chipRow}>
+                    {(userData?.skills || []).map((skill, i) => (
+                      <View key={i} style={styles.chipOffer}>
+                        <Text style={styles.chipOfferText}>{skill}</Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
-              </View>
-              <View style={styles.skillsGroupWant}>
-                <Text style={styles.skillsLabel}>WANTING</Text>
-                <View style={styles.chipRow}>
-                  {(userData?.wants || []).map((skill, i) => (
-                    <View key={i} style={styles.chipWant}>
-                      <Text style={styles.chipWantText}>{skill}</Text>
-                    </View>
-                  ))}
+              )}
+              {(userData?.skills?.length || 0) > 0 && (userData?.wants?.length || 0) > 0 && (
+                <View style={styles.skillsDivider} />
+              )}
+              {(userData?.wants?.length || 0) > 0 && (
+                <View>
+                  <Text style={styles.skillsLabel}>WANTING</Text>
+                  <View style={styles.chipRow}>
+                    {(userData?.wants || []).map((skill, i) => (
+                      <View key={i} style={styles.chipWant}>
+                        <Text style={styles.chipWantText}>{skill}</Text>
+                      </View>
+                    ))}
+                  </View>
                 </View>
-              </View>
+              )}
             </>
           ) : (
-            <TouchableOpacity onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.7}>
-              <Text style={styles.noSkillsText}>Add skills to your profile →</Text>
-            </TouchableOpacity>
+            <View style={styles.emptyRow}>
+              <Text style={styles.emptyRowText}>No skills added yet</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('EditProfile')} activeOpacity={0.7}>
+                <Text style={styles.emptyRowAction}>Add →</Text>
+              </TouchableOpacity>
+            </View>
           )}
         </View>
 
-        {/* ── Section 5: Appearance ────────────────────────────────────────── */}
-        <View style={styles.appearanceCard}>
-          <View style={styles.appearanceHeader}>
-            <Text style={styles.sectionTitleSm}>Appearance</Text>
+        {/* ── Section 5: Listings + Reviews (one combined card) ───────────── */}
+        <View style={styles.sectionCard}>
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>My Listings</Text>
+            <TouchableOpacity onPress={() => navigation.navigate('MyListings')} activeOpacity={0.7}>
+              <Text style={styles.sectionLink}>See all →</Text>
+            </TouchableOpacity>
           </View>
-          <View style={styles.toggleRow}>
-            <View style={styles.themeIconLabelRow}>
-              {isDark ? <MoonIcon color={theme.purpleLight} /> : <SunIcon />}
-              <View style={styles.themeLabelCol}>
-                <Text style={styles.themeLabelTitle}>Theme</Text>
-                <Text style={styles.themeLabelSub}>{isDark ? 'Dark mode' : 'Light mode'}</Text>
-              </View>
-            </View>
 
+          {myListings.length > 0 ? (
+            myListings.slice(0, 2).map((item, i) => (
+              <TouchableOpacity
+                key={item.id}
+                style={[styles.listingRow, i < Math.min(myListings.length, 2) - 1 && styles.rowBorder]}
+                onPress={() => navigation.navigate('ListingDetail', { listing: item })}
+                activeOpacity={0.7}
+              >
+                <View style={styles.listingTextCol}>
+                  <Text style={styles.listingOffer} numberOfLines={1}>
+                    {capitalize(item.offerSkill)}
+                  </Text>
+                  <Text style={styles.listingWant} numberOfLines={1}>
+                    ↔ {capitalize(item.wantSkill)}
+                  </Text>
+                </View>
+                <View style={styles.activeBadge}>
+                  <Text style={styles.activeBadgeText}>● Active</Text>
+                </View>
+              </TouchableOpacity>
+            ))
+          ) : (
+            <View style={styles.emptyRow}>
+              <Text style={styles.emptyRowText}>No active listings</Text>
+              <TouchableOpacity onPress={() => navigation.navigate('PostListing')} activeOpacity={0.7}>
+                <Text style={styles.emptyRowAction}>Post one →</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <View style={styles.sectionDivider} />
+
+          <View style={styles.sectionHeaderRow}>
+            <Text style={styles.sectionTitle}>Reviews</Text>
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('AllReviews', {
+                  userId: auth.currentUser?.uid,
+                  userName: userData?.name || 'My',
+                })
+              }
+              activeOpacity={0.7}
+            >
+              <Text style={styles.sectionLink}>See all →</Text>
+            </TouchableOpacity>
+          </View>
+
+          {myReviews.length > 0 ? (
+            myReviews.slice(0, 1).map(review => (
+              <View key={review.id} style={styles.reviewRow}>
+                <View style={styles.reviewAvatar}>
+                  <Text style={styles.reviewAvatarText}>{getInitials(review.fromUserName)}</Text>
+                </View>
+                <View style={styles.reviewBody}>
+                  <View style={styles.reviewTopRow}>
+                    <Text style={styles.reviewName} numberOfLines={1}>
+                      {review.fromUserName || 'User'}
+                    </Text>
+                    <Text style={styles.reviewStars}>{'★'.repeat(review.rating || 0)}</Text>
+                  </View>
+                  {review.status === 'pending_confirmation' && (
+                    <Text style={styles.pendingReviewText}>
+                      Pending — public once the swap is confirmed
+                    </Text>
+                  )}
+                  {!!review.comment && (
+                    <Text style={styles.reviewComment} numberOfLines={2} ellipsizeMode="tail">
+                      {review.comment}
+                    </Text>
+                  )}
+                </View>
+              </View>
+            ))
+          ) : (
+            <Text style={styles.emptyRowText}>No reviews yet</Text>
+          )}
+        </View>
+
+        {/* ── Section 6: Quick actions (theme toggle lives here now) ──────── */}
+        <View style={styles.quickActionsCard}>
+          <View style={styles.actionRow}>
+            <View style={[styles.actionIconBox, { backgroundColor: 'rgba(83,74,183,0.15)' }]}>
+              {isDark ? <MoonIcon color={theme.purpleLight} size={18} /> : <SunIcon size={18} />}
+            </View>
+            <View style={styles.actionLabelCol}>
+              <Text style={styles.actionLabelPlain}>Appearance</Text>
+              <Text style={styles.actionSub}>{isDark ? 'Dark mode' : 'Light mode'}</Text>
+            </View>
             <TouchableOpacity onPress={toggleTheme} activeOpacity={0.8}>
               <Animated.View style={[styles.toggleTrackBase, { backgroundColor: trackColor }]}>
                 <Animated.View style={[styles.toggleThumb, { transform: [{ translateX: thumbPosition }] }]} />
               </Animated.View>
             </TouchableOpacity>
           </View>
-        </View>
-
-        {/* ── Section 6: My Listings preview ───────────────────────────────── */}
-        <View style={styles.listingsCard}>
-          <View style={styles.cardHeaderRow}>
-            <Text style={styles.sectionTitleSm}>My Listings</Text>
-            <TouchableOpacity onPress={() => navigation.navigate('MyListings')} activeOpacity={0.7}>
-              <Text style={styles.sectionLink}>See all →</Text>
-            </TouchableOpacity>
-          </View>
-
-          {myListings.length === 0 ? (
-            <View style={styles.emptyCardWrap}>
-              <Text style={styles.emptyCardText}>No listings yet</Text>
-              <TouchableOpacity onPress={() => navigation.navigate('PostListing')} activeOpacity={0.7}>
-                <Text style={styles.emptyCardLink}>Post a Skill →</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            myListings.map(listing => (
-              <View key={listing.id} style={styles.miniListingRow}>
-                <View style={styles.miniListingLeft}>
-                  <Text style={styles.miniListingOffer} numberOfLines={1}>
-                    {listing.offerSkill}
-                  </Text>
-                  <Text style={styles.miniListingWant} numberOfLines={1}>
-                    ↔ {listing.wantSkill}
-                  </Text>
-                </View>
-                <View style={styles.miniBadgeRow}>
-                  <View style={[styles.miniDot, listing.active ? styles.miniDotActive : styles.miniDotInactive]} />
-                  <Text style={listing.active ? styles.miniBadgeTextActive : styles.miniBadgeTextInactive}>
-                    {listing.active ? 'Active' : 'Paused'}
-                  </Text>
-                </View>
-              </View>
-            ))
-          )}
-        </View>
-
-        {/* ── Section 7: Recent reviews ────────────────────────────────────── */}
-        <View style={styles.reviewsCard}>
-          <View style={styles.cardHeaderRow}>
-            <Text style={styles.sectionTitleSm}>Reviews</Text>
-            <TouchableOpacity onPress={() => Alert.alert('Coming soon')} activeOpacity={0.7}>
-              <Text style={styles.sectionLink}>See all →</Text>
-            </TouchableOpacity>
-          </View>
-
-          {myReviews.length === 0 ? (
-            <Text style={styles.emptyReviewsText}>No reviews yet</Text>
-          ) : (
-            myReviews.map(review => (
-              <View key={review.id} style={styles.reviewRow}>
-                <View style={styles.reviewTopRow}>
-                  <View style={styles.reviewAvatar}>
-                    <Text style={styles.reviewAvatarText}>{getInitials(review.fromUserName)}</Text>
-                  </View>
-                  <View style={styles.reviewNameStarsCol}>
-                    <Text style={styles.reviewName} numberOfLines={1}>
-                      {review.fromUserName || 'User'}
-                    </Text>
-                    <StarRating
-                      rating={review.rating}
-                      starsStyle={{ fontSize: 11 }}
-                      filledStyle={styles.reviewStars}
-                      emptyStyle={[styles.reviewStars, { color: theme.textMuted }]}
-                    />
-                  </View>
-                  <Text style={styles.reviewTime}>{timeAgo(review.createdAt)}</Text>
-                </View>
-                {review.status === 'pending_confirmation' && (
-                  <Text style={styles.pendingReviewText}>
-                    Pending — visible publicly once the swap is confirmed
-                  </Text>
-                )}
-                {!!review.comment && (
-                  <Text style={styles.reviewComment} numberOfLines={2} ellipsizeMode="tail">
-                    {review.comment}
-                  </Text>
-                )}
-              </View>
-            ))
-          )}
-        </View>
-
-        {/* ── Section 8: Quick actions ─────────────────────────────────────── */}
-        <View style={styles.quickActionsCard}>
-          <TouchableOpacity
-            style={styles.actionRow}
-            onPress={() => navigation.navigate('MyListings')}
-            activeOpacity={0.7}
-          >
-            <View style={[styles.actionIconBox, { backgroundColor: 'rgba(83,74,183,0.15)' }]}>
-              <ListIcon color={theme.purple} />
-            </View>
-            <Text style={styles.actionLabel}>My Listings</Text>
-            <View style={styles.actionRight}>
-              <View style={styles.actionCountBadge}>
-                <Text style={styles.actionCountText}>{activeListingsCount}</Text>
-              </View>
-              <Text style={styles.actionChevron}>›</Text>
-            </View>
-          </TouchableOpacity>
 
           <TouchableOpacity
             style={styles.actionRow}
@@ -696,9 +737,11 @@ const ProfileScreen = ({ navigation }) => {
             </View>
             <Text style={styles.actionLabel}>Barter History</Text>
             <View style={styles.actionRight}>
-              <View style={styles.actionCountBadge}>
-                <Text style={styles.actionCountText}>{swapsCount}</Text>
-              </View>
+              {swapsCount > 0 && (
+                <View style={styles.actionCountBadge}>
+                  <Text style={styles.actionCountText}>{swapsCount}</Text>
+                </View>
+              )}
               <Text style={styles.actionChevron}>›</Text>
             </View>
           </TouchableOpacity>
@@ -728,13 +771,9 @@ const ProfileScreen = ({ navigation }) => {
           </TouchableOpacity>
         </View>
 
-        {/* ── Section 9: Sign out ──────────────────────────────────────────── */}
-        <TouchableOpacity
-          style={[styles.signOutButton, { marginBottom: 32 + insets.bottom }]}
-          onPress={handleSignOut}
-          activeOpacity={0.8}
-        >
-          <SignOutIcon color={theme.error} />
+        {/* ── Section 7: Sign out (subtle text link) ──────────────────────── */}
+        <TouchableOpacity style={styles.signOutRow} onPress={handleSignOut} activeOpacity={0.7}>
+          <SignOutIcon color={theme.error} size={16} />
           <Text style={styles.signOutText}>Sign Out</Text>
         </TouchableOpacity>
 

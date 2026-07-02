@@ -240,9 +240,12 @@ const SavedSkillsScreen = ({ navigation }) => {
       <Text style={styles.emptySubtitle}>
         Tap the bookmark icon on any listing to save it here for later
       </Text>
+      {/* Jump straight to the Browse tab — goBack() would return to
+          whatever screen opened this one (usually Profile), not Browse.
+          The tab's route name is "Home"; "Browse" is only its title. */}
       <TouchableOpacity
         style={styles.browseBtn}
-        onPress={() => navigation.goBack()}
+        onPress={() => navigation.navigate('Main', { screen: 'Home' })}
         activeOpacity={0.8}
       >
         <Text style={styles.browseBtnText}>Browse Skills</Text>

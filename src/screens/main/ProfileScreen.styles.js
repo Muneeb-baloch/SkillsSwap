@@ -6,11 +6,13 @@ const getStyles = theme =>
       flex: 1,
       backgroundColor: theme.background,
     },
+    // Bottom padding must clear the floating pill tab bar, which overlays
+    // content (same 110px clearance as HomeScreen's listContent).
     scrollContent: {
-      paddingBottom: 20,
+      paddingBottom: 110,
     },
 
-    // ── Section 1: Header ──────────────────────────────────────────────────
+    // ── Header ───────────────────────────────────────────────────────────────
     header: {
       flexDirection: 'row',
       alignItems: 'center',
@@ -36,37 +38,37 @@ const getStyles = theme =>
       justifyContent: 'center',
     },
 
-    // ── Section 2: Profile hero ─────────────────────────────────────────────
+    // ── Hero (compact) ───────────────────────────────────────────────────────
     heroSection: {
       alignItems: 'center',
-      paddingVertical: 24,
+      paddingVertical: 20,
       paddingHorizontal: 20,
     },
     avatarContainer: {
       position: 'relative',
-      width: 96,
-      height: 96,
+      width: 80,
+      height: 80,
       alignSelf: 'center',
     },
     avatarCircle: {
-      width: 96,
-      height: 96,
-      borderRadius: 48,
+      width: 80,
+      height: 80,
+      borderRadius: 40,
       backgroundColor: theme.purple,
       alignItems: 'center',
       justifyContent: 'center',
       overflow: 'hidden',
     },
     avatarImage: {
-      width: 96,
-      height: 96,
-      borderRadius: 48,
+      width: 80,
+      height: 80,
+      borderRadius: 40,
       borderWidth: 3,
       borderColor: theme.purple,
     },
     avatarInitials: {
       color: '#FFFFFF',
-      fontSize: 32,
+      fontSize: 28,
       fontWeight: 'bold',
     },
     uploadingOverlay: {
@@ -75,7 +77,7 @@ const getStyles = theme =>
       left: 0,
       right: 0,
       bottom: 0,
-      borderRadius: 48,
+      borderRadius: 40,
       backgroundColor: 'rgba(0,0,0,0.45)',
       alignItems: 'center',
       justifyContent: 'center',
@@ -94,11 +96,11 @@ const getStyles = theme =>
       justifyContent: 'center',
     },
     nameText: {
-      fontSize: 22,
+      fontSize: 20,
       fontWeight: '700',
       color: theme.textPrimary,
       textAlign: 'center',
-      marginTop: 12,
+      marginTop: 10,
     },
     cityRow: {
       flexDirection: 'row',
@@ -121,7 +123,7 @@ const getStyles = theme =>
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'center',
-      marginTop: 10,
+      marginTop: 8,
     },
     starsText: {
       fontSize: 18,
@@ -139,7 +141,7 @@ const getStyles = theme =>
       marginLeft: 6,
     },
     editProfileButton: {
-      marginTop: 16,
+      marginTop: 12,
       alignSelf: 'center',
       borderWidth: 1.5,
       borderColor: theme.purple,
@@ -154,11 +156,10 @@ const getStyles = theme =>
       fontWeight: '600',
     },
 
-    // ── Section 3: Stats row ─────────────────────────────────────────────────
+    // ── Stats row ────────────────────────────────────────────────────────────
     statsRow: {
       flexDirection: 'row',
       marginHorizontal: 20,
-      marginBottom: 16,
       gap: 8,
     },
     statCard: {
@@ -180,13 +181,14 @@ const getStyles = theme =>
       textAlign: 'center',
     },
 
-    // ── Shared section header (skills / listings / reviews / quick actions) ──
-    sectionTitle: {
-      color: theme.textPrimary,
-      fontSize: 16,
-      fontWeight: '700',
+    // ── Shared card + section header pieces ──────────────────────────────────
+    sectionHeaderRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      marginBottom: 10,
     },
-    sectionTitleSm: {
+    sectionTitle: {
       color: theme.textPrimary,
       fontSize: 15,
       fontWeight: '700',
@@ -194,29 +196,48 @@ const getStyles = theme =>
     sectionLink: {
       color: theme.teal,
       fontSize: 13,
+      fontWeight: '500',
     },
-
-    // ── Section 4: Skills ───────────────────────────────────────────────────
-    skillsSection: {
-      marginHorizontal: 20,
-      marginBottom: 16,
+    sectionDivider: {
+      height: 1,
+      backgroundColor: theme.divider,
+      marginVertical: 14,
     },
-    sectionHeaderRow: {
+    emptyRow: {
       flexDirection: 'row',
       alignItems: 'center',
       justifyContent: 'space-between',
+      paddingVertical: 4,
     },
-    skillsGroupOffer: {
-      marginTop: 10,
+    emptyRowText: {
+      fontSize: 13,
+      color: theme.textMuted,
+      fontStyle: 'italic',
     },
-    skillsGroupWant: {
-      marginTop: 12,
+    emptyRowAction: {
+      fontSize: 13,
+      color: theme.teal,
+      fontWeight: '600',
+    },
+
+    // ── Skills card ──────────────────────────────────────────────────────────
+    skillsCard: {
+      marginHorizontal: 20,
+      marginTop: 16,
+      backgroundColor: theme.cardBg,
+      borderRadius: 16,
+      padding: 14,
     },
     skillsLabel: {
       color: theme.textMuted,
-      fontSize: 11,
+      fontSize: 10,
       textTransform: 'uppercase',
       letterSpacing: 0.8,
+    },
+    skillsDivider: {
+      height: 1,
+      backgroundColor: theme.divider,
+      marginVertical: 10,
     },
     chipRow: {
       flexDirection: 'row',
@@ -229,8 +250,8 @@ const getStyles = theme =>
       borderWidth: 1,
       borderColor: theme.purple,
       borderRadius: 20,
-      paddingVertical: 6,
-      paddingHorizontal: 14,
+      paddingVertical: 5,
+      paddingHorizontal: 12,
     },
     chipOfferText: {
       color: theme.purple,
@@ -242,55 +263,172 @@ const getStyles = theme =>
       borderWidth: 1,
       borderColor: theme.teal,
       borderRadius: 20,
-      paddingVertical: 6,
-      paddingHorizontal: 14,
+      paddingVertical: 5,
+      paddingHorizontal: 12,
     },
     chipWantText: {
       color: theme.teal,
       fontSize: 13,
       fontWeight: '500',
     },
-    noSkillsText: {
+
+    // ── Combined Listings + Reviews card ─────────────────────────────────────
+    sectionCard: {
+      marginHorizontal: 20,
+      marginTop: 12,
+      backgroundColor: theme.cardBg,
+      borderRadius: 16,
+      padding: 16,
+    },
+    listingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      paddingVertical: 10,
+    },
+    rowBorder: {
+      borderBottomWidth: 1,
+      borderBottomColor: theme.divider,
+    },
+    listingTextCol: {
+      flex: 1,
+      marginRight: 10,
+    },
+    listingOffer: {
+      fontSize: 14,
+      fontWeight: '600',
+      color: theme.textPrimary,
+    },
+    listingWant: {
+      fontSize: 12,
       color: theme.textMuted,
+      marginTop: 2,
+    },
+    activeBadge: {
+      backgroundColor: 'rgba(29,158,117,0.12)',
+      borderRadius: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    activeBadgeText: {
+      color: theme.teal,
+      fontSize: 11,
+      fontWeight: '500',
+    },
+    reviewRow: {
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      paddingTop: 2,
+    },
+    reviewAvatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: theme.purple,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    reviewAvatarText: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    reviewBody: {
+      flex: 1,
+      marginLeft: 10,
+    },
+    reviewTopRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    reviewName: {
       fontSize: 13,
-      fontStyle: 'italic',
-      marginTop: 6,
+      fontWeight: '600',
+      color: theme.textPrimary,
+    },
+    reviewStars: {
+      fontSize: 12,
+      color: '#F5C518',
+    },
+    reviewComment: {
+      fontSize: 13,
+      color: theme.textMuted,
+      marginTop: 3,
+      lineHeight: 18,
+    },
+    pendingReviewText: {
+      color: '#F5C518',
+      fontSize: 11,
+      fontWeight: '600',
+      marginTop: 3,
     },
 
-    // ── Section 5: Appearance / theme toggle ──────────────────────────────────
-    appearanceCard: {
+    // ── Quick actions (theme toggle lives here now) ──────────────────────────
+    quickActionsCard: {
       marginHorizontal: 20,
-      marginBottom: 16,
+      marginTop: 12,
       backgroundColor: theme.cardBg,
       borderRadius: 16,
       overflow: 'hidden',
     },
-    appearanceHeader: {
-      padding: 16,
-      paddingBottom: 8,
-    },
-    toggleRow: {
+    actionRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
+      paddingVertical: 14,
       paddingHorizontal: 16,
-      paddingBottom: 16,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.divider,
     },
-    themeIconLabelRow: {
-      flexDirection: 'row',
+    actionRowLast: {
+      borderBottomWidth: 0,
+    },
+    actionIconBox: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
       alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: 12,
+    },
+    actionLabel: {
+      color: theme.textPrimary,
+      fontSize: 15,
       flex: 1,
     },
-    themeLabelCol: {
-      marginLeft: 10,
+    actionLabelCol: {
+      flex: 1,
     },
-    themeLabelTitle: {
+    actionLabelPlain: {
       color: theme.textPrimary,
       fontSize: 15,
     },
-    themeLabelSub: {
+    actionSub: {
       color: theme.textMuted,
       fontSize: 12,
+      marginTop: 1,
+    },
+    actionRight: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 6,
+    },
+    actionChevron: {
+      color: theme.textMuted,
+      fontSize: 18,
+    },
+    actionCountBadge: {
+      minWidth: 20,
+      height: 20,
+      borderRadius: 10,
+      backgroundColor: theme.purple,
+      alignItems: 'center',
+      justifyContent: 'center',
+      paddingHorizontal: 5,
+    },
+    actionCountText: {
+      color: '#FFFFFF',
+      fontSize: 10,
+      fontWeight: '700',
     },
     toggleTrackBase: {
       width: 48,
@@ -311,237 +449,31 @@ const getStyles = theme =>
       elevation: 4,
     },
 
-    // ── Section 6: Listings preview ───────────────────────────────────────────
-    listingsCard: {
-      marginHorizontal: 20,
-      marginBottom: 16,
-      backgroundColor: theme.cardBg,
-      borderRadius: 16,
-      overflow: 'hidden',
-    },
-    cardHeaderRow: {
+    // ── Sign out (subtle text link) + version ────────────────────────────────
+    signOutRow: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
-      padding: 16,
-      paddingBottom: 8,
-    },
-    miniListingRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'space-between',
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      borderTopWidth: 1,
-      borderTopColor: theme.divider,
-    },
-    miniListingLeft: {
-      flex: 1,
-      marginRight: 10,
-    },
-    miniListingOffer: {
-      color: theme.textPrimary,
-      fontSize: 14,
-      fontWeight: '700',
-    },
-    miniListingWant: {
-      color: theme.textMuted,
-      fontSize: 12,
-      marginTop: 2,
-    },
-    miniBadgeRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 4,
-    },
-    miniDot: {
-      width: 6,
-      height: 6,
-      borderRadius: 3,
-    },
-    miniDotActive: {
-      backgroundColor: theme.teal,
-    },
-    miniDotInactive: {
-      backgroundColor: theme.textMuted,
-    },
-    miniBadgeTextActive: {
-      color: theme.teal,
-      fontSize: 11,
-    },
-    miniBadgeTextInactive: {
-      color: theme.textMuted,
-      fontSize: 11,
-    },
-    emptyCardWrap: {
-      padding: 20,
-      alignItems: 'center',
-    },
-    emptyCardText: {
-      color: theme.textMuted,
-      fontSize: 14,
-    },
-    emptyCardLink: {
-      color: theme.purple,
-      fontSize: 14,
-      fontWeight: 'bold',
+      justifyContent: 'center',
+      gap: 8,
+      paddingVertical: 16,
       marginTop: 8,
-    },
-
-    // ── Section 7: Reviews preview ─────────────────────────────────────────────
-    reviewsCard: {
-      marginHorizontal: 20,
-      marginBottom: 16,
-      backgroundColor: theme.cardBg,
-      borderRadius: 16,
-      overflow: 'hidden',
-    },
-    reviewRow: {
-      paddingVertical: 12,
-      paddingHorizontal: 16,
-      borderTopWidth: 1,
-      borderTopColor: theme.divider,
-    },
-    reviewTopRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-    },
-    reviewAvatar: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      backgroundColor: theme.purple,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 8,
-    },
-    reviewAvatarText: {
-      color: '#FFFFFF',
-      fontSize: 14,
-      fontWeight: 'bold',
-    },
-    reviewNameStarsCol: {
-      flex: 1,
-    },
-    reviewName: {
-      color: theme.textPrimary,
-      fontSize: 13,
-      fontWeight: 'bold',
-    },
-    reviewStars: {
-      color: '#F5C518',
-      fontSize: 11,
-      marginTop: 1,
-    },
-    reviewTime: {
-      color: theme.textMuted,
-      fontSize: 11,
-    },
-    reviewComment: {
-      color: theme.textMuted,
-      fontSize: 13,
-      marginTop: 6,
-    },
-    pendingReviewText: {
-      color: '#F5C518',
-      fontSize: 11,
-      fontWeight: '600',
-      marginTop: 6,
-    },
-    emptyReviewsText: {
-      color: theme.textMuted,
-      fontSize: 14,
-      padding: 20,
-      textAlign: 'center',
-    },
-
-    // ── Section 8: Quick actions ───────────────────────────────────────────────
-    quickActionsCard: {
-      marginHorizontal: 20,
-      marginBottom: 16,
-      backgroundColor: theme.cardBg,
-      borderRadius: 16,
-      overflow: 'hidden',
-    },
-    actionRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      paddingVertical: 14,
-      paddingHorizontal: 16,
-      borderBottomWidth: 1,
-      borderBottomColor: theme.divider,
-    },
-    actionRowLast: {
-      borderBottomWidth: 0,
-    },
-    actionIconBox: {
-      width: 36,
-      height: 36,
-      borderRadius: 18,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: 12,
-    },
-    actionLabel: {
-      color: theme.textPrimary,
-      fontSize: 15,
-      flex: 1,
-    },
-    actionRight: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 6,
-    },
-    actionChevron: {
-      color: theme.textMuted,
-      fontSize: 18,
-    },
-    actionCountBadge: {
-      minWidth: 18,
-      height: 18,
-      borderRadius: 10,
-      backgroundColor: theme.purple,
-      alignItems: 'center',
-      justifyContent: 'center',
-      paddingHorizontal: 6,
-    },
-    actionCountText: {
-      color: '#FFFFFF',
-      fontSize: 10,
-      fontWeight: 'bold',
-    },
-
-    // ── Section 9: Sign out ────────────────────────────────────────────────────
-    signOutButton: {
-      marginHorizontal: 20,
-      marginTop: 8,
-      backgroundColor: 'rgba(226,75,74,0.1)',
-      borderWidth: 1.5,
-      borderColor: theme.error,
-      borderRadius: 14,
-      height: 54,
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
     },
     signOutText: {
       color: theme.error,
-      fontSize: 16,
-      fontWeight: '700',
-      marginLeft: 8,
+      fontSize: 15,
+      fontWeight: '500',
     },
     versionText: {
       color: theme.textMuted,
       fontSize: 11,
       textAlign: 'center',
-      marginTop: 12,
     },
 
     // ── Loading skeleton ─────────────────────────────────────────────────────
     skeletonAvatar: {
-      width: 96,
-      height: 96,
-      borderRadius: 48,
+      width: 80,
+      height: 80,
+      borderRadius: 40,
       backgroundColor: theme.inputBg,
       alignSelf: 'center',
     },

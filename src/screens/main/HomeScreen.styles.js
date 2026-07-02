@@ -310,6 +310,24 @@ const getStyles = theme =>
       fontSize: 15,
       textAlign: 'center',
     },
+    noMatchHint: {
+      color: theme.textMuted,
+      fontSize: 13,
+      textAlign: 'center',
+      marginTop: 4,
+    },
+    clearSearchText: {
+      color: theme.purple,
+      fontSize: 14,
+      fontWeight: '600',
+      marginTop: 14,
+    },
+    resultsCount: {
+      color: theme.textMuted,
+      fontSize: 12,
+      paddingHorizontal: 20,
+      marginBottom: 6,
+    },
 
     // ── Footer loader ─────────────────────────────────────────────────────────
     footerLoader: {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -364,17 +364,32 @@ const HomeScreen = ({ navigation }) => {
     return unsubscribe;
   }, [navigation, loadSavedIds]);
 
-  // Client-side filter
-  const filteredListings = listings.filter(item => {
-    const needle = debouncedSearch.toLowerCase();
-    const matchesSearch =
-      !needle ||
-      item.offerSkill?.toLowerCase().includes(needle) ||
-      item.wantSkill?.toLowerCase().includes(needle);
-    const matchesCategory =
-      selectedCategory === 'All' || item.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // Client-side filter, recomputed only when inputs change. Category matches
+  // offerCategory — that's the field PostListingScreen actually saves
+  // (item.category doesn't exist, which is why chips used to show nothing).
+  const filteredListings = useMemo(() => {
+    const needle = debouncedSearch.toLowerCase().trim();
+    return listings.filter(item => {
+      const matchesSearch =
+        !needle ||
+        (item.offerSkill || '').toLowerCase().includes(needle) ||
+        (item.wantSkill || '').toLowerCase().includes(needle) ||
+        (item.userName || '').toLowerCase().includes(needle) ||
+        (item.city || '').toLowerCase().includes(needle) ||
+        (item.offerDescription || '').toLowerCase().includes(needle);
+      const matchesCategory =
+        selectedCategory === 'All' ||
+        (item.offerCategory || '').toLowerCase() === selectedCategory.toLowerCase();
+      return matchesSearch && matchesCategory;
+    });
+  }, [listings, debouncedSearch, selectedCategory]);
+
+  const isFiltering = debouncedSearch.trim().length > 0 || selectedCategory !== 'All';
+
+  const clearFilters = () => {
+    setSearchText('');
+    setSelectedCategory('All');
+  };
 
   const renderCard = ({ item }) => (
     <ListingCard
@@ -399,7 +414,15 @@ const HomeScreen = ({ navigation }) => {
   // all" empty state below, which has its own call-to-action).
   const ListEmpty = () => (
     <View style={styles.centerState}>
-      <Text style={styles.noMatchText}>No skills found</Text>
+      <Text style={styles.noMatchText}>
+        {debouncedSearch.trim()
+          ? `No results for "${debouncedSearch.trim()}"`
+          : 'No skills found'}
+      </Text>
+      <Text style={styles.noMatchHint}>Try a different keyword or category</Text>
+      <TouchableOpacity onPress={clearFilters} activeOpacity={0.7}>
+        <Text style={styles.clearSearchText}>Clear search</Text>
+      </TouchableOpacity>
     </View>
   );
 
@@ -453,6 +476,13 @@ const HomeScreen = ({ navigation }) => {
           </TouchableOpacity>
         ))}
       </ScrollView>
+
+      {/* ── Results count — only while a search/category filter is active ──── */}
+      {!loading && isFiltering && listings.length > 0 && (
+        <Text style={styles.resultsCount}>
+          {filteredListings.length} result{filteredListings.length !== 1 ? 's' : ''}
+        </Text>
+      )}
 
       {/* ── Feed states — mutually exclusive: loading, hard error, empty, or list ── */}
       {loading ? (

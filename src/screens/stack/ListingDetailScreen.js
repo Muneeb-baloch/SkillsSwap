@@ -63,7 +63,6 @@ function capitalize(str) {
   if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1);
 }
-
 // ── Icons ─────────────────────────────────────────────────────────────────────
 
 const BackIcon = ({ color }) => (
@@ -191,7 +190,6 @@ const ListingDetailScreen = ({ navigation, route }) => {
   const listing = route.params?.listing;
 
   const [listingActive, setListingActive] = useState(listing?.active ?? true);
-  const [imageLoading, setImageLoading] = useState(false);
 
   const [posterRating, setPosterRating] = useState(0);
   const [posterReviews, setPosterReviews] = useState(0);
@@ -308,8 +306,6 @@ const ListingDetailScreen = ({ navigation, route }) => {
     );
   }
 
-  const hasPhoto = !!listing.photoURL;
-
   const posterName = posterData?.name || listing.userName || 'User';
   const posterPhoto = posterData?.photoURL || listing.userPhoto || '';
 
@@ -400,57 +396,24 @@ const ListingDetailScreen = ({ navigation, route }) => {
 
   return (
     <View style={styles.container}>
-      {/* ── Part 1: Hero ──────────────────────────────────────────────── */}
-      <View style={styles.heroSection}>
-        {/* Background layer (absolute, behind the foreground) */}
-        {hasPhoto ? (
-          <>
-            <Image
-              source={{ uri: listing.photoURL }}
-              style={styles.heroImage}
-              resizeMode="cover"
-              onLoadStart={() => setImageLoading(true)}
-              onLoadEnd={() => setImageLoading(false)}
-            />
-            <View style={styles.heroImageOverlay} />
-            {imageLoading && (
-              <View style={styles.heroImageLoader}>
-                <ActivityIndicator color={theme.purple} />
-              </View>
-            )}
-          </>
-        ) : (
-          <>
-            <View style={styles.decorCircleTop} />
-            <View style={styles.decorCircleBottom} />
-          </>
-        )}
+      {/* ── Part 1: Minimal header (back + centered title + share) ─────── */}
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity
+          style={styles.headerBackBtn}
+          onPress={() => navigation.goBack()}
+          activeOpacity={0.7}
+        >
+          <BackIcon color={theme.textPrimary} />
+        </TouchableOpacity>
 
-        {/* Foreground: button row (top) + skill text (centered below), as direct
-            flex children of the fixed-height hero so they never overlap. */}
-        <View style={[styles.heroButtonRow, { marginTop: insets.top + 10 }]}>
-          <TouchableOpacity style={styles.heroButton} onPress={() => navigation.goBack()} activeOpacity={0.8}>
-            <BackIcon color={theme.textPrimary} />
-          </TouchableOpacity>
+        <Text style={styles.headerTitle} numberOfLines={1} ellipsizeMode="tail">
+          {capitalize(listing.offerSkill)}
+        </Text>
 
-          <TouchableOpacity style={styles.heroButton} onPress={handleShare} activeOpacity={0.8}>
-            <ShareIcon color={theme.textPrimary} />
-          </TouchableOpacity>
-        </View>
-
-        {!hasPhoto && (
-          <View style={styles.heroTextWrap}>
-            <Text style={styles.heroSkillText} numberOfLines={2} ellipsizeMode="tail">
-              {capitalize(listing.offerSkill)}
-            </Text>
-            <View style={styles.heroCategoryChip}>
-              <Text style={styles.heroCategoryChipText}>{listing.offerCategory || 'Skill'}</Text>
-            </View>
-          </View>
-        )}
+        <TouchableOpacity style={styles.headerShareBtn} onPress={handleShare} activeOpacity={0.7}>
+          <ShareIcon color={theme.textPrimary} />
+        </TouchableOpacity>
       </View>
-
-      <View style={styles.heroTransition} />
 
       <ScrollView style={styles.scrollView} contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         {/* ── Part 2: Poster info row ─────────────────────────────────── */}

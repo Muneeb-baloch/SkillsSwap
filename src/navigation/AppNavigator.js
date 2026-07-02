@@ -18,6 +18,7 @@ import MyListingsScreen    from '../screens/stack/MyListingsScreen';
 import EditProfileScreen   from '../screens/stack/EditProfileScreen';
 import BarterHistoryScreen from '../screens/stack/BarterHistoryScreen';
 import SavedSkillsScreen   from '../screens/stack/SavedSkillsScreen';
+import AllReviewsScreen    from '../screens/stack/AllReviewsScreen';
 
 const Stack = createStackNavigator();
 
@@ -43,6 +44,7 @@ const AppNavigator = () => (
     <Stack.Screen name="EditProfile"   component={EditProfileScreen} options={{ headerShown: false }} />
     <Stack.Screen name="BarterHistory" component={BarterHistoryScreen} />
     <Stack.Screen name="SavedSkills"   component={SavedSkillsScreen} options={{ headerShown: false }} />
+    <Stack.Screen name="AllReviews"    component={AllReviewsScreen} options={{ headerShown: false }} />
   </Stack.Navigator>
 );
 

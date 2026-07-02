@@ -31,107 +31,44 @@ const getStyles = theme =>
       textAlign: 'center',
     },
 
-    // ── Part 1: Hero ──────────────────────────────────────────────────────
-    // The foreground (button row + skill text) is a flex COLUMN overlaying the
-    // hero: the button row sits at the top and the text takes the remaining
-    // flex:1 space below it. Because they're siblings in a column (not stacked
-    // absolute layers) the text can never overlap the buttons or status bar,
-    // no matter how long the skill title is.
-    heroSection: {
-      height: 230,
-      position: 'relative',
-      backgroundColor: theme.cardBg,
-      overflow: 'hidden',
-    },
-    heroImage: {
-      ...StyleSheet.absoluteFillObject,
-    },
-    heroImageOverlay: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0,0,0,0.3)',
-    },
-    heroImageLoader: {
-      ...StyleSheet.absoluteFillObject,
-      backgroundColor: 'rgba(0,0,0,0.2)',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    decorCircleTop: {
-      position: 'absolute',
-      top: -40,
-      right: -40,
-      width: 200,
-      height: 200,
-      borderRadius: 100,
-      backgroundColor: 'rgba(83,74,183,0.25)',
-    },
-    decorCircleBottom: {
-      position: 'absolute',
-      bottom: 20,
-      left: -20,
-      width: 120,
-      height: 120,
-      borderRadius: 60,
-      backgroundColor: 'rgba(29,158,117,0.15)',
-    },
-    // Foreground content sits as direct flex children of heroSection (which has
-    // an explicit height: 230), so the button row takes its natural height at
-    // the top and heroTextWrap's flex:1 reliably fills the rest below it.
-    heroButtonRow: {
+    // ── Part 1: Minimal header (back + centered title + share) ────────────
+    header: {
       flexDirection: 'row',
       alignItems: 'center',
-      justifyContent: 'space-between',
       paddingHorizontal: 16,
+      paddingBottom: 12,
+      backgroundColor: theme.background,
+      borderBottomWidth: 1,
+      borderBottomColor: theme.divider,
     },
-    heroButton: {
+    headerBackBtn: {
       width: 38,
       height: 38,
-      borderRadius: 19,
+      borderRadius: 12,
+      backgroundColor: theme.inputBg,
       alignItems: 'center',
       justifyContent: 'center',
-      backgroundColor: theme.cardBg,
-      borderWidth: 1,
-      borderColor: theme.divider,
     },
-    heroTextWrap: {
+    headerTitle: {
       flex: 1,
+      fontSize: 15,
+      fontWeight: '600',
+      color: theme.textPrimary,
+      textAlign: 'center',
+      marginHorizontal: 8,
+    },
+    headerShareBtn: {
+      width: 38,
+      height: 38,
+      borderRadius: 12,
+      backgroundColor: theme.inputBg,
       alignItems: 'center',
       justifyContent: 'center',
-      paddingHorizontal: 28,
-      paddingBottom: 16,
-    },
-    heroSkillText: {
-      color: theme.textPrimary,
-      fontSize: 17,
-      fontWeight: '700',
-      textAlign: 'center',
-      marginBottom: 10,
-    },
-    heroCategoryChip: {
-      backgroundColor: 'rgba(83,74,183,0.15)',
-      borderWidth: 1,
-      borderColor: 'rgba(83,74,183,0.4)',
-      borderRadius: 20,
-      paddingHorizontal: 14,
-      paddingVertical: 5,
-    },
-    heroCategoryChipText: {
-      color: theme.purple,
-      fontSize: 12,
-      fontWeight: '600',
-    },
-    heroTransition: {
-      height: 20,
-      backgroundColor: theme.background,
-      borderTopLeftRadius: 24,
-      borderTopRightRadius: 24,
-      marginTop: -24,
-      zIndex: 5,
     },
 
-    // ── Part 2: Poster info row ───────────────────────────────────────────
+    // ── Part 2: Poster info row — first thing visible under the header ─────
     posterRow: {
-      marginTop: 0,
+      marginTop: 16,
       marginHorizontal: 20,
       backgroundColor: theme.cardBg,
       borderRadius: 16,
