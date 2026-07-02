@@ -147,6 +147,10 @@ const getStyles = theme =>
       color: theme.tealLight,
       fontSize: 11,
     },
+    saveBtn: {
+      padding: 4,
+      marginLeft: 10,
+    },
     divider: {
       height: 1,
       backgroundColor: theme.divider,

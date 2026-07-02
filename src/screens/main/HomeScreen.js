@@ -11,6 +11,7 @@ import {
   StatusBar,
   Image,
 } from 'react-native';
+import Svg, { Path } from 'react-native-svg';
 import {
   collection,
   query,
@@ -21,8 +22,11 @@ import {
   getDocs,
   doc,
   getDoc,
+  updateDoc,
+  arrayUnion,
+  arrayRemove,
 } from 'firebase/firestore';
-import { db } from '../../config/firebase';
+import { auth, db } from '../../config/firebase';
 import { useTheme } from '../../theme/ThemeContext';
 import getStyles from './HomeScreen.styles';
 
@@ -78,7 +82,20 @@ const SkeletonCard = ({ styles }) => (
   </View>
 );
 
-const ListingCard = ({ item, navigation, styles, theme }) => {
+const BookmarkIcon = ({ saved, theme, size = 20 }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Path
+      d="M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z"
+      fill={saved ? theme.purple : 'none'}
+      stroke={saved ? theme.purple : theme.textMuted}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+const ListingCard = ({ item, navigation, styles, theme, isSaved, onToggleSave }) => {
   // Listings posted before the registration displayName fix have the literal
   // string 'Anonymous' saved, so a falsy check alone won't catch those.
   const hasName = item.userName && item.userName !== 'Anonymous';
@@ -130,6 +147,14 @@ const ListingCard = ({ item, navigation, styles, theme }) => {
         </TouchableOpacity>
 
         <Text style={styles.distance}>~2 km</Text>
+
+        <TouchableOpacity
+          style={styles.saveBtn}
+          onPress={() => onToggleSave(item.id)}
+          activeOpacity={0.7}
+        >
+          <BookmarkIcon saved={isSaved} theme={theme} />
+        </TouchableOpacity>
       </View>
 
       <View style={styles.divider} />
@@ -193,6 +218,7 @@ const HomeScreen = ({ navigation }) => {
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [error, setError] = useState(null);
+  const [savedIds, setSavedIds] = useState(new Set());
 
   // 400 ms debounce for search
   useEffect(() => {
@@ -211,7 +237,12 @@ const HomeScreen = ({ navigation }) => {
         limit(10),
       );
       const snapshot = await getDocs(q);
-      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      // Own listings are excluded client-side: a where('userId','!=',…)
+      // clause can't be combined with orderBy('createdAt') without another
+      // composite index.
+      const docs = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(item => item.userId !== auth.currentUser?.uid);
       setListings(docs);
       setLastDoc(snapshot.docs[snapshot.docs.length - 1] ?? null);
       setHasMore(snapshot.docs.length === 10);
@@ -236,6 +267,7 @@ const HomeScreen = ({ navigation }) => {
         const snapshot = await getDocs(fallbackQ);
         const fetched = snapshot.docs
           .map(d => ({ id: d.id, ...d.data() }))
+          .filter(item => item.userId !== auth.currentUser?.uid)
           .sort((a, b) => {
             const aT = a.createdAt?.toDate?.() || new Date(0);
             const bT = b.createdAt?.toDate?.() || new Date(0);
@@ -265,7 +297,9 @@ const HomeScreen = ({ navigation }) => {
         limit(10),
       );
       const snapshot = await getDocs(q);
-      const docs = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+      const docs = snapshot.docs
+        .map(d => ({ id: d.id, ...d.data() }))
+        .filter(item => item.userId !== auth.currentUser?.uid);
       setListings(prev => [...prev, ...docs]);
       setLastDoc(snapshot.docs[snapshot.docs.length - 1] ?? null);
       setHasMore(snapshot.docs.length === 10);
@@ -276,9 +310,59 @@ const HomeScreen = ({ navigation }) => {
     }
   }, [hasMore, loadingMore, lastDoc]);
 
+  const loadSavedIds = useCallback(async () => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+    try {
+      const userSnap = await getDoc(doc(db, 'users', currentUser.uid));
+      if (userSnap.exists()) {
+        setSavedIds(new Set(userSnap.data().savedListings || []));
+      }
+    } catch (err) {
+      console.error('Load saved error:', err);
+    }
+  }, []);
+
+  const handleToggleSave = useCallback(async listingId => {
+    const currentUser = auth.currentUser;
+    if (!currentUser) return;
+
+    let isSaved = false;
+    // Optimistic update — instant UI response, reverted below if the write fails.
+    setSavedIds(prev => {
+      isSaved = prev.has(listingId);
+      const next = new Set(prev);
+      if (isSaved) next.delete(listingId);
+      else next.add(listingId);
+      return next;
+    });
+
+    try {
+      await updateDoc(doc(db, 'users', currentUser.uid), {
+        savedListings: isSaved ? arrayRemove(listingId) : arrayUnion(listingId),
+      });
+    } catch (err) {
+      setSavedIds(prev => {
+        const next = new Set(prev);
+        if (isSaved) next.add(listingId);
+        else next.delete(listingId);
+        return next;
+      });
+      console.error('Toggle save error:', err);
+    }
+  }, []);
+
   useEffect(() => {
     fetchListings();
-  }, [fetchListings]);
+    loadSavedIds();
+  }, [fetchListings, loadSavedIds]);
+
+  // Re-sync bookmarks when returning from SavedSkillsScreen (items may have
+  // been unsaved there while this screen stayed mounted in the tab stack).
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', loadSavedIds);
+    return unsubscribe;
+  }, [navigation, loadSavedIds]);
 
   // Client-side filter
   const filteredListings = listings.filter(item => {
@@ -293,7 +377,14 @@ const HomeScreen = ({ navigation }) => {
   });
 
   const renderCard = ({ item }) => (
-    <ListingCard item={item} navigation={navigation} styles={styles} theme={theme} />
+    <ListingCard
+      item={item}
+      navigation={navigation}
+      styles={styles}
+      theme={theme}
+      isSaved={savedIds.has(item.id)}
+      onToggleSave={handleToggleSave}
+    />
   );
 
   const ListFooter = () =>

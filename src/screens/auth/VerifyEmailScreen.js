@@ -1,12 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   SafeAreaView,
+  ScrollView,
   View,
   Text,
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
   Alert,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { signOut } from 'firebase/auth';
 import {
@@ -155,6 +158,16 @@ const VerifyEmailScreen = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+      >
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+      >
       <View style={styles.container}>
         <Text style={styles.heading}>Verify your email</Text>
         <Text style={styles.subtext}>
@@ -218,6 +231,8 @@ const VerifyEmailScreen = ({ navigation, route }) => {
           <Text style={styles.wrongEmailText}>Wrong email? Start over</Text>
         </TouchableOpacity>
       </View>
+      </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };

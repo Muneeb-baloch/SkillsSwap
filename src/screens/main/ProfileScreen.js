@@ -705,7 +705,7 @@ const ProfileScreen = ({ navigation }) => {
 
           <TouchableOpacity
             style={styles.actionRow}
-            onPress={() => Alert.alert('Coming soon')}
+            onPress={() => navigation.navigate('SavedSkills')}
             activeOpacity={0.7}
           >
             <View style={[styles.actionIconBox, { backgroundColor: 'rgba(245,197,24,0.15)' }]}>

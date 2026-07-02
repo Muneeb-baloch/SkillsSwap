@@ -6,6 +6,9 @@ const getStyles = theme =>
       flex: 1,
       backgroundColor: theme.background,
     },
+    flex: {
+      flex: 1,
+    },
     scroll: {
       flexGrow: 1,
       justifyContent: 'center',
