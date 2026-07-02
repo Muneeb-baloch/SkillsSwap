@@ -3,4 +3,4 @@
 // a "Web client" OAuth client under the hood — copy its Client ID here.
 // Firebase needs this specific ID (not the iOS/Android one) to verify the
 // idToken returned by @react-native-google-signin/google-signin.
-export const GOOGLE_WEB_CLIENT_ID = 'REPLACE_WITH_WEB_CLIENT_ID.apps.googleusercontent.com';
+export const GOOGLE_WEB_CLIENT_ID = '556600852472-f48h362lh3hfk8b7eknruqfcu56h9lp7.apps.googleusercontent.com';

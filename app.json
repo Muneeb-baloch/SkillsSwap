@@ -10,7 +10,8 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "bundleIdentifier": "com.skillsswap.app",
-      "googleServicesFile": "./GoogleService-Info.plist"
+      "googleServicesFile": "./GoogleService-Info.plist",
+      "appleTeamId": "2DW5R72HJF"
     },
     "android": {
       "package": "com.skillsswap.app",
@@ -38,7 +39,10 @@
           }
         }
       ],
-      "@react-native-google-signin/google-signin"
+      "@react-native-google-signin/google-signin",
+      "./plugins/withModularHeaders.js",
+      "./plugins/withoutAppleSignInEntitlement.js",
+      "./plugins/withoutPushEntitlement.js"
     ],
     "experiments": {
       "reactCompiler": true

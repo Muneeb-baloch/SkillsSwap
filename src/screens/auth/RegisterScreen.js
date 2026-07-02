@@ -9,13 +9,19 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import CityPicker from '../../components/CityPicker';
+import GoogleIcon from '../../components/GoogleIcon';
 import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
 import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../../config/firebase';
+import {
+  signInWithGoogle,
+  signInWithApple,
+  ensureUserDocument,
+  SIGNIN_CANCELLED,
+} from '../../utils/socialAuth';
 import { useTheme } from '../../theme/ThemeContext';
-import { signInWithGoogle, signInWithApple, ensureUserDocument, SIGNIN_CANCELLED } from '../../utils/socialAuth';
 import { generateOtpCode, sendOtpEmail, OTP_EXPIRY_MINUTES } from '../../utils/emailVerification';
 import getStyles from './RegisterScreen.styles';
 
@@ -30,6 +36,7 @@ const RegisterScreen = ({ navigation }) => {
   const [showPassword, setShowPassword]               = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading]                         = useState(false);
+  const [socialLoading, setSocialLoading]             = useState(null);
   const [error, setError]                             = useState('');
 
   const [nameFocused, setNameFocused]       = useState(false);
@@ -87,35 +94,20 @@ const RegisterScreen = ({ navigation }) => {
     }
   };
 
-  const handleGoogle = async () => {
+  // Shared by Google/Apple: the provider already verified the email, so
+  // social sign-ups skip the OTP step and go straight to Main.
+  const handleSocialSignIn = async (provider, signInFn) => {
     setError('');
-    setLoading(true);
+    setSocialLoading(provider);
     try {
-      const { userCredential } = await signInWithGoogle();
-      await ensureUserDocument(userCredential);
-      navigation.replace('Main');
-    } catch (e) {
-      if (e.message !== SIGNIN_CANCELLED) {
-        setError(e.message || 'Google sign in failed. Please try again.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleApple = async () => {
-    setError('');
-    setLoading(true);
-    try {
-      const { userCredential, displayName } = await signInWithApple();
+      const { userCredential, displayName } = await signInFn();
       await ensureUserDocument(userCredential, displayName);
       navigation.replace('Main');
     } catch (e) {
-      if (e.code !== 'ERR_REQUEST_CANCELED') {
-        setError(e.message || 'Apple sign in failed. Please try again.');
-      }
+      if (e.message === SIGNIN_CANCELLED || e.code === 'ERR_REQUEST_CANCELED') return;
+      setError(e.message || 'Sign up failed. Please try again.');
     } finally {
-      setLoading(false);
+      setSocialLoading(null);
     }
   };
 
@@ -220,23 +212,44 @@ const RegisterScreen = ({ navigation }) => {
             }
           </TouchableOpacity>
 
+          {/* Social sign-up */}
           <View style={styles.dividerRow}>
             <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>or</Text>
+            <Text style={styles.dividerText}>or sign up with</Text>
             <View style={styles.dividerLine} />
           </View>
 
-          <TouchableOpacity style={styles.googleButton} onPress={handleGoogle} disabled={loading}>
-            <View style={styles.googleIconCircle}>
-              <FontAwesome name="google" size={15} color={theme.purple} />
-            </View>
-            <Text style={styles.googleButtonText}>Continue with Google</Text>
+          <TouchableOpacity
+            style={styles.googleButton}
+            onPress={() => handleSocialSignIn('google', signInWithGoogle)}
+            disabled={socialLoading !== null}
+          >
+            {socialLoading === 'google'
+              ? <ActivityIndicator color="#1a1a2e" />
+              : (
+                <>
+                  <GoogleIcon size={20} />
+                  <Text style={styles.googleButtonText}>Continue with Google</Text>
+                </>
+              )
+            }
           </TouchableOpacity>
 
           {Platform.OS === 'ios' && (
-            <TouchableOpacity style={styles.appleButton} onPress={handleApple} disabled={loading}>
-              <Ionicons name="logo-apple" size={18} color="#FFFFFF" />
-              <Text style={styles.appleButtonText}>Continue with Apple</Text>
+            <TouchableOpacity
+              style={styles.appleButton}
+              onPress={() => handleSocialSignIn('apple', signInWithApple)}
+              disabled={socialLoading !== null}
+            >
+              {socialLoading === 'apple'
+                ? <ActivityIndicator color="#FFFFFF" />
+                : (
+                  <>
+                    <Ionicons name="logo-apple" size={22} color="#FFFFFF" />
+                    <Text style={styles.appleButtonText}>Continue with Apple</Text>
+                  </>
+                )
+              }
             </TouchableOpacity>
           )}
 
