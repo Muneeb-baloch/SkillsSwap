@@ -1,0 +1,53 @@
+<svg width="1024" height="1024"
+  viewBox="0 0 1024 1024"
+  xmlns="http://www.w3.org/2000/svg">
+
+  <!-- Dark navy background -->
+  <rect width="1024" height="1024"
+    fill="#1a1a2e" rx="180"/>
+
+  <!-- Decorative subtle circles -->
+  <circle cx="820" cy="200" r="180"
+    fill="rgba(83,74,183,0.08)"/>
+  <circle cx="200" cy="820" r="140"
+    fill="rgba(29,158,117,0.08)"/>
+
+  <!-- Top swap arrow — purple -->
+  <path
+    d="M 512 180
+       C 310 180 180 310 180 460
+       C 180 610 310 680 460 680
+       L 564 680
+       C 660 680 730 720 730 800
+       C 730 880 660 820 564 820
+       L 340 820"
+    fill="none"
+    stroke="#AFA9EC"
+    stroke-width="68"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
+  <!-- Arrow head top -->
+  <polygon
+    points="274,724 340,852 406,724"
+    fill="#AFA9EC"/>
+
+  <!-- Bottom swap arrow — teal -->
+  <path
+    d="M 512 844
+       C 714 844 844 714 844 564
+       C 844 414 714 344 564 344
+       L 460 344
+       C 364 344 294 304 294 224
+       C 294 144 364 204 460 204
+       L 684 204"
+    fill="none"
+    stroke="#9FE1CB"
+    stroke-width="68"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
+  <!-- Arrow head bottom -->
+  <polygon
+    points="750,300 684,172 618,300"
+    fill="#9FE1CB"/>
+
+</svg>
