@@ -35,6 +35,17 @@ const RATING_HINTS = {
   5: 'Excellent',
 };
 
+const REVIEW_TAGS = [
+  'Great teacher',
+  'Very responsive',
+  'Punctual',
+  'Patient',
+  'Knowledgeable',
+  'Friendly',
+  'Clear explanations',
+  'Flexible schedule',
+];
+
 const LeaveReviewScreen = ({ navigation, route }) => {
   const { theme, isDark } = useTheme();
   const styles = getStyles(theme);
@@ -47,6 +58,7 @@ const LeaveReviewScreen = ({ navigation, route }) => {
   } = route.params || {};
 
   const [rating, setRating] = useState(0);
+  const [selectedTags, setSelectedTags] = useState([]);
   const [comment, setComment] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
@@ -78,6 +90,7 @@ const LeaveReviewScreen = ({ navigation, route }) => {
         toUserName: toUserName || '',
         requestId: requestId || '',
         rating,
+        tags: selectedTags,
         comment: comment.trim(),
         status: reviewStatus,
         createdAt: serverTimestamp(),
@@ -195,6 +208,31 @@ const LeaveReviewScreen = ({ navigation, route }) => {
             ))}
           </View>
           <Text style={styles.ratingHint}>{RATING_HINTS[rating]}</Text>
+
+          <Text style={styles.tagsLabel}>What went well? (optional)</Text>
+          <View style={styles.tagsRow}>
+            {REVIEW_TAGS.map(tag => (
+              <TouchableOpacity
+                key={tag}
+                onPress={() => {
+                  setSelectedTags(prev =>
+                    prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag],
+                  );
+                }}
+                style={[styles.tagChip, selectedTags.includes(tag) && styles.tagChipSelected]}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.tagChipText,
+                    selectedTags.includes(tag) && styles.tagChipTextSelected,
+                  ]}
+                >
+                  {tag}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
           <Text style={styles.label}>YOUR REVIEW (optional)</Text>
           <TextInput

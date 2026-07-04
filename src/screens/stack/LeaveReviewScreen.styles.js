@@ -133,7 +133,44 @@ const getStyles = theme =>
       fontSize: 14,
       fontWeight: '600',
       marginTop: 12,
-      marginBottom: 28,
+    },
+
+    // Quick tag chips ("What went well?")
+    tagsLabel: {
+      alignSelf: 'flex-start',
+      color: theme.textMuted,
+      fontSize: 11,
+      textTransform: 'uppercase',
+      letterSpacing: 0.8,
+      marginTop: 20,
+      marginBottom: 10,
+    },
+    tagsRow: {
+      width: '100%',
+      flexDirection: 'row',
+      flexWrap: 'wrap',
+      gap: 8,
+      marginBottom: 24,
+    },
+    tagChip: {
+      backgroundColor: theme.inputBg,
+      borderWidth: 1,
+      borderColor: theme.divider,
+      borderRadius: 20,
+      paddingVertical: 7,
+      paddingHorizontal: 14,
+    },
+    tagChipSelected: {
+      backgroundColor: 'rgba(29,158,117,0.12)',
+      borderColor: theme.teal,
+    },
+    tagChipText: {
+      color: theme.textMuted,
+      fontSize: 13,
+    },
+    tagChipTextSelected: {
+      color: theme.teal,
+      fontWeight: '500',
     },
 
     label: {

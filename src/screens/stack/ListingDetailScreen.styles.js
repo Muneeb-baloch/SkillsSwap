@@ -147,6 +147,30 @@ const getStyles = theme =>
       fontWeight: '600',
     },
 
+    // ── Listing photo (above the swap card) ────────────────────────────────
+    listingPhotoContainer: {
+      marginTop: 16,
+      marginHorizontal: 20,
+      marginBottom: 12,
+      borderRadius: 16,
+      overflow: 'hidden',
+    },
+    listingPhoto: {
+      width: '100%',
+      height: 200,
+      backgroundColor: theme.inputBg,
+    },
+    photoLoader: {
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+      alignItems: 'center',
+      justifyContent: 'center',
+      backgroundColor: theme.inputBg,
+    },
+
     // ── Part 3: Swap details card ─────────────────────────────────────────
     swapCard: {
       marginHorizontal: 20,

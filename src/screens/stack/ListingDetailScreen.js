@@ -190,6 +190,7 @@ const ListingDetailScreen = ({ navigation, route }) => {
   const listing = route.params?.listing;
 
   const [listingActive, setListingActive] = useState(listing?.active ?? true);
+  const [photoLoading, setPhotoLoading] = useState(false);
 
   const [posterRating, setPosterRating] = useState(0);
   const [posterReviews, setPosterReviews] = useState(0);
@@ -448,6 +449,24 @@ const ListingDetailScreen = ({ navigation, route }) => {
             <Text style={styles.viewProfileButtonText}>View profile</Text>
           </TouchableOpacity>
         </View>
+
+        {/* ── Listing photo (photoURL had no home since the hero was removed) ── */}
+        {listing.photoURL ? (
+          <View style={styles.listingPhotoContainer}>
+            <Image
+              source={{ uri: listing.photoURL }}
+              style={styles.listingPhoto}
+              resizeMode="cover"
+              onLoadStart={() => setPhotoLoading(true)}
+              onLoadEnd={() => setPhotoLoading(false)}
+            />
+            {photoLoading && (
+              <View style={styles.photoLoader}>
+                <ActivityIndicator color={theme.purple} />
+              </View>
+            )}
+          </View>
+        ) : null}
 
         {/* ── Part 3: Swap details card ───────────────────────────────── */}
         <View style={styles.swapCard}>
