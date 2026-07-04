@@ -2,52 +2,64 @@
   viewBox="0 0 1024 1024"
   xmlns="http://www.w3.org/2000/svg">
 
-  <!-- Dark navy background -->
+  <!-- Background rounded square -->
   <rect width="1024" height="1024"
-    fill="#1a1a2e" rx="180"/>
+    fill="#1a1a2e" rx="200"/>
 
-  <!-- Decorative subtle circles -->
-  <circle cx="820" cy="200" r="180"
-    fill="rgba(83,74,183,0.08)"/>
-  <circle cx="200" cy="820" r="140"
-    fill="rgba(29,158,117,0.08)"/>
+  <!-- Purple glow circle top right -->
+  <circle cx="750" cy="274" r="200"
+    fill="#534AB7" opacity="0.15"/>
 
-  <!-- Top swap arrow — purple -->
+  <!-- Teal glow circle bottom left -->
+  <circle cx="274" cy="750" r="160"
+    fill="#1D9E75" opacity="0.12"/>
+
+  <!-- TOP ARROW — purple, left to right curve -->
+  <!-- Main stroke -->
   <path
-    d="M 512 180
-       C 310 180 180 310 180 460
-       C 180 610 310 680 460 680
-       L 564 680
-       C 660 680 730 720 730 800
-       C 730 880 660 820 564 820
-       L 340 820"
+    d="M 200 420
+       C 200 280 310 200 450 200
+       L 574 200
+       C 714 200 800 280 800 380
+       C 800 480 720 540 600 540
+       L 424 540
+       C 304 540 224 600 224 700"
     fill="none"
     stroke="#AFA9EC"
-    stroke-width="68"
+    stroke-width="80"
     stroke-linecap="round"
     stroke-linejoin="round"/>
-  <!-- Arrow head top -->
-  <polygon
-    points="274,724 340,852 406,724"
-    fill="#AFA9EC"/>
-
-  <!-- Bottom swap arrow — teal -->
+  <!-- Arrow head pointing down-left -->
   <path
-    d="M 512 844
-       C 714 844 844 714 844 564
-       C 844 414 714 344 564 344
-       L 460 344
-       C 364 344 294 304 294 224
-       C 294 144 364 204 460 204
-       L 684 204"
+    d="M 164 650 L 224 780 L 304 670"
+    fill="none"
+    stroke="#AFA9EC"
+    stroke-width="80"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
+
+  <!-- BOTTOM ARROW — teal, right to left curve -->
+  <!-- Main stroke -->
+  <path
+    d="M 824 604
+       C 824 744 714 824 574 824
+       L 450 824
+       C 310 824 224 744 224 644
+       C 224 544 304 484 424 484
+       L 600 484
+       C 720 484 800 424 800 324"
     fill="none"
     stroke="#9FE1CB"
-    stroke-width="68"
+    stroke-width="80"
     stroke-linecap="round"
     stroke-linejoin="round"/>
-  <!-- Arrow head bottom -->
-  <polygon
-    points="750,300 684,172 618,300"
-    fill="#9FE1CB"/>
+  <!-- Arrow head pointing up-right -->
+  <path
+    d="M 860 374 L 800 244 L 720 354"
+    fill="none"
+    stroke="#9FE1CB"
+    stroke-width="80"
+    stroke-linecap="round"
+    stroke-linejoin="round"/>
 
 </svg>
