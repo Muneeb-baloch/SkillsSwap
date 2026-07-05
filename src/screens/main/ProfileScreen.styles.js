@@ -135,10 +135,26 @@ const getStyles = theme =>
     starEmpty: {
       color: theme.textMuted,
     },
+    ratingNumber: {
+      color: theme.textPrimary,
+      fontSize: 14,
+      fontWeight: '700',
+      marginLeft: 6,
+    },
     reviewCountText: {
       color: theme.textMuted,
       fontSize: 12,
       marginLeft: 6,
+    },
+    noRatingRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 6,
+    },
+    noRatingText: {
+      color: theme.textMuted,
+      fontSize: 13,
+      fontStyle: 'italic',
     },
     editProfileButton: {
       marginTop: 12,

@@ -435,10 +435,16 @@ const ListingDetailScreen = ({ navigation, route }) => {
               <LocationPinIcon color={theme.textMuted} />
               <Text style={styles.posterCity}>{[listing.city, listing.country].filter(Boolean).join(', ')}</Text>
             </View>
-            <View style={styles.posterRatingRow}>
-              <StarRow rating={posterRating} styles={styles} />
-              <Text style={styles.posterReviewsText}>({posterReviews} reviews)</Text>
-            </View>
+            {posterReviews > 0 ? (
+              <View style={styles.posterRatingRow}>
+                <StarRow rating={posterRating} styles={styles} />
+                <Text style={styles.posterReviewsText}>
+                  ({posterReviews} review{posterReviews === 1 ? '' : 's'})
+                </Text>
+              </View>
+            ) : (
+              <Text style={styles.noRatingSmall}>New member</Text>
+            )}
           </View>
 
           <TouchableOpacity

@@ -537,17 +537,24 @@ const ProfileScreen = ({ navigation }) => {
             <Text style={styles.memberSinceText}>{formatMemberSince(userData.createdAt)}</Text>
           )}
 
-          <View style={styles.ratingRow}>
-            <StarRating
-              rating={userData?.rating}
-              starsStyle={styles.starsText}
-              filledStyle={styles.starFilled}
-              emptyStyle={styles.starEmpty}
-            />
-            <Text style={styles.reviewCountText}>
-              ({reviewsCount} review{reviewsCount === 1 ? '' : 's'})
-            </Text>
-          </View>
+          {userData?.reviewCount > 0 ? (
+            <View style={styles.ratingRow}>
+              <StarRating
+                rating={userData.rating}
+                starsStyle={styles.starsText}
+                filledStyle={styles.starFilled}
+                emptyStyle={styles.starEmpty}
+              />
+              <Text style={styles.ratingNumber}>{Number(userData.rating || 0).toFixed(1)}</Text>
+              <Text style={styles.reviewCountText}>
+                ({userData.reviewCount} review{userData.reviewCount === 1 ? '' : 's'})
+              </Text>
+            </View>
+          ) : (
+            <View style={styles.noRatingRow}>
+              <Text style={styles.noRatingText}>No reviews yet</Text>
+            </View>
+          )}
 
           <TouchableOpacity
             style={styles.editProfileButton}

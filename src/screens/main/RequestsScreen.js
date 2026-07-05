@@ -16,10 +16,12 @@ import {
   where,
   onSnapshot,
   doc,
+  getDoc,
   updateDoc,
   addDoc,
   getDocs,
   arrayUnion,
+  runTransaction,
   serverTimestamp,
 } from 'firebase/firestore';
 import { auth, db } from '../../config/firebase';
@@ -59,6 +61,95 @@ const sortByCreatedDesc = (a, b) => {
   const aT = a.createdAt?.toDate?.() || new Date(0);
   const bT = b.createdAt?.toDate?.() || new Date(0);
   return bT - aT;
+};
+
+// Sequential reference number (SS-YYYY-NNNNN) from a counter doc. A plain
+// "count all agreements" query would be rejected by the security rules
+// (users may only read their own agreements), so a shared counter is used
+// instead, incremented in a transaction to stay correct under concurrency.
+const generateReferenceNo = async () => {
+  const year = new Date().getFullYear();
+  try {
+    const counterRef = doc(db, 'counters', 'swapAgreements');
+    const next = await runTransaction(db, async tx => {
+      const snap = await tx.get(counterRef);
+      const count = (snap.exists() ? snap.data().count : 0) + 1;
+      tx.set(counterRef, { count }, { merge: true });
+      return count;
+    });
+    return `SS-${year}-${String(next).padStart(5, '0')}`;
+  } catch (err) {
+    console.warn('Reference counter failed, falling back to timestamp:', err);
+    return `SS-${year}-${String(Date.now()).slice(-5)}`;
+  }
+};
+
+// Creates the swapAgreements doc when a request is accepted and links it back
+// to the barterRequest. Skill mapping: fromUserSkill is what the requester
+// (party1) teaches, offerSkill is what the listing poster (party2) teaches.
+const createSwapAgreement = async request => {
+  try {
+    const [party1Snap, party2Snap, listingSnap] = await Promise.all([
+      getDoc(doc(db, 'users', request.fromUserId)),
+      getDoc(doc(db, 'users', request.toUserId)),
+      request.listingId ? getDoc(doc(db, 'listings', request.listingId)) : Promise.resolve(null),
+    ]);
+
+    const party1Data = party1Snap.data() || {};
+    const party2Data = party2Snap.data() || {};
+    // Formats / availability / flexibility live on the listing, not the request.
+    const listingData = listingSnap?.exists?.() ? listingSnap.data() : {};
+
+    const referenceNo = await generateReferenceNo();
+
+    const agreementData = {
+      referenceNo,
+      requestId: request.id,
+
+      party1: {
+        userId: request.fromUserId,
+        name: request.fromUserName || party1Data.name || 'User',
+        email: party1Data.email || '',
+        offerSkill: request.fromUserSkill || request.wantSkill || '',
+      },
+      party2: {
+        userId: request.toUserId,
+        name: request.toUserName || party2Data.name || 'User',
+        email: party2Data.email || '',
+        offerSkill: request.offerSkill || '',
+      },
+
+      offerSkill: request.offerSkill || '',
+      wantSkill: request.wantSkill || '',
+      preferredFormats: listingData.preferredFormats || [],
+      availableDays: listingData.availableDays || [],
+      flexibility: listingData.flexibility || '',
+
+      status: 'active',
+      flagged: false,
+      adminNotes: '',
+
+      party1Confirmed: false,
+      party2Confirmed: false,
+
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+      completedAt: null,
+    };
+
+    const agreementRef = await addDoc(collection(db, 'swapAgreements'), agreementData);
+
+    await updateDoc(doc(db, 'barterRequests', request.id), {
+      agreementId: agreementRef.id,
+      referenceNo,
+    });
+
+    return { id: agreementRef.id, ...agreementData };
+  } catch (err) {
+    // Don't throw — a failed agreement shouldn't block accepting the swap.
+    console.error('Agreement creation error:', err);
+    return null;
+  }
 };
 
 const STATUS_META = {
@@ -137,7 +228,8 @@ const RequestsScreen = ({ navigation }) => {
     };
   }, [currentUser]);
 
-  // Accept → set status, then create a chat doc (if one doesn't already exist).
+  // Accept → set status, create a chat doc (if one doesn't already exist),
+  // generate the swap agreement, then drop the user straight into the chat.
   const handleAccept = useCallback(
     async request => {
       if (!currentUser) return;
@@ -151,8 +243,9 @@ const RequestsScreen = ({ navigation }) => {
           where('requestId', '==', request.id),
         );
         const existing = await getDocs(existingQ);
+        let chatId;
         if (existing.empty) {
-          await addDoc(collection(db, 'chats'), {
+          const chatRef = await addDoc(collection(db, 'chats'), {
             participants: [request.fromUserId, request.toUserId],
             requestId: request.id,
             listingId: request.listingId || '',
@@ -160,8 +253,30 @@ const RequestsScreen = ({ navigation }) => {
             lastMessageAt: serverTimestamp(),
             createdAt: serverTimestamp(),
           });
+          chatId = chatRef.id;
+        } else {
+          chatId = existing.docs[0].id;
         }
-        Alert.alert('Request accepted', 'A chat has been opened. Head to Chats to start talking!');
+
+        // Generate the swap agreement (skipped if this request already has one).
+        const agreement = request.agreementId ? null : await createSwapAgreement(request);
+
+        if (agreement) {
+          await addDoc(collection(db, 'chats', chatId, 'messages'), {
+            senderId: 'system',
+            type: 'agreement',
+            text:
+              `🤝 Swap Agreement Created\n` +
+              `Reference: ${agreement.referenceNo}\n` +
+              `${agreement.party1.name} will teach: ${capitalize(agreement.party1.offerSkill) || 'their skill'}\n` +
+              `${agreement.party2.name} will teach: ${capitalize(agreement.party2.offerSkill) || 'their skill'}`,
+            agreementId: agreement.id,
+            referenceNo: agreement.referenceNo,
+            sentAt: serverTimestamp(),
+          });
+        }
+
+        navigation.navigate('ChatRoom', { chatId });
       } catch (err) {
         console.error('Accept error:', err);
         Alert.alert('Error', 'Could not accept the request. Please try again.');
@@ -169,7 +284,7 @@ const RequestsScreen = ({ navigation }) => {
         setActingId(null);
       }
     },
-    [currentUser],
+    [currentUser, navigation],
   );
 
   const handleDecline = useCallback(request => {
@@ -258,6 +373,13 @@ const RequestsScreen = ({ navigation }) => {
           completedAt: serverTimestamp(),
           completionConfirmedBy: arrayUnion(currentUser.uid),
         });
+        if (request.agreementId) {
+          await updateDoc(doc(db, 'swapAgreements', request.agreementId), {
+            status: 'completed',
+            completedAt: serverTimestamp(),
+            updatedAt: serverTimestamp(),
+          }).catch(err => console.warn('Agreement completion sync failed:', err));
+        }
         const cid = await findChatId(request.id);
         if (cid) {
           await addDoc(collection(db, 'chats', cid, 'messages'), {
@@ -303,6 +425,12 @@ const RequestsScreen = ({ navigation }) => {
                   disputedBy: currentUser.uid,
                   disputedAt: serverTimestamp(),
                 });
+                if (request.agreementId) {
+                  await updateDoc(doc(db, 'swapAgreements', request.agreementId), {
+                    status: 'disputed',
+                    updatedAt: serverTimestamp(),
+                  }).catch(err => console.warn('Agreement dispute sync failed:', err));
+                }
                 const cid = await findChatId(request.id);
                 if (cid) {
                   await addDoc(collection(db, 'chats', cid, 'messages'), {

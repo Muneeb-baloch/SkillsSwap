@@ -251,7 +251,7 @@ const UserProfileScreen = ({ navigation, route }) => {
                   <Text style={styles.reviewCount}>({userData.reviewCount} reviews)</Text>
                 </View>
               ) : (
-                <Text style={styles.noRatingText}>No reviews yet</Text>
+                <Text style={styles.noRatingText}>New member · no reviews yet</Text>
               )}
 
               {!!userData.createdAt && (

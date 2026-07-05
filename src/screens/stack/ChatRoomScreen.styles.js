@@ -79,6 +79,238 @@ const getStyles = theme =>
       width: 64,
     },
 
+    // ── Swap agreement banner (below header) ────────────────────────────────
+    agreementBanner: {
+      backgroundColor: 'rgba(29,158,117,0.08)',
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(29,158,117,0.2)',
+      paddingHorizontal: 16,
+      paddingVertical: 10,
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    agreementBannerLeft: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    agreementBannerTextCol: {
+      marginLeft: 8,
+    },
+    agreementBannerTitle: {
+      color: theme.teal,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    agreementBannerRef: {
+      color: theme.textMuted,
+      fontSize: 11,
+      marginTop: 1,
+    },
+    agreementBannerView: {
+      color: theme.teal,
+      fontSize: 12,
+      fontWeight: '600',
+    },
+
+    // ── Agreement message bubble ────────────────────────────────────────────
+    agreementMessage: {
+      backgroundColor: 'rgba(29,158,117,0.08)',
+      borderWidth: 1,
+      borderColor: 'rgba(29,158,117,0.25)',
+      borderRadius: 14,
+      padding: 14,
+      marginHorizontal: 16,
+      marginVertical: 6,
+      flexDirection: 'row',
+      alignItems: 'flex-start',
+      gap: 10,
+    },
+    agreementMsgIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: 10,
+      backgroundColor: 'rgba(29,158,117,0.15)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      flexShrink: 0,
+    },
+    agreementMsgTitle: {
+      color: theme.textPrimary,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    agreementMsgRef: {
+      color: theme.teal,
+      fontSize: 12,
+      marginTop: 2,
+    },
+    agreementMsgTap: {
+      color: theme.textMuted,
+      fontSize: 11,
+      marginTop: 4,
+    },
+
+    // ── Agreement detail modal ──────────────────────────────────────────────
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: 'rgba(0,0,0,0.5)',
+    },
+    agreementSheet: {
+      backgroundColor: theme.background,
+      borderTopLeftRadius: 24,
+      borderTopRightRadius: 24,
+      paddingHorizontal: 20,
+      paddingTop: 10,
+    },
+    dragHandle: {
+      width: 40,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: theme.divider,
+      alignSelf: 'center',
+      marginBottom: 14,
+    },
+    agreementHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+    },
+    agreementTitle: {
+      color: theme.textPrimary,
+      fontSize: 18,
+      fontWeight: '700',
+    },
+    agreementRef: {
+      color: theme.teal,
+      fontSize: 13,
+      fontWeight: '600',
+    },
+    agreementStatusRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginTop: 10,
+    },
+    statusBadge: {
+      borderRadius: 8,
+      paddingHorizontal: 8,
+      paddingVertical: 4,
+    },
+    statusBadgeActive: {
+      backgroundColor: 'rgba(29,158,117,0.15)',
+    },
+    statusBadgeProblem: {
+      backgroundColor: 'rgba(226,75,74,0.15)',
+    },
+    statusBadgeText: {
+      fontSize: 11,
+      fontWeight: '700',
+    },
+    statusBadgeTextActive: {
+      color: theme.teal,
+    },
+    statusBadgeTextProblem: {
+      color: theme.error,
+    },
+    agreementDate: {
+      color: theme.textMuted,
+      fontSize: 12,
+      marginLeft: 10,
+    },
+    agreementSection: {
+      backgroundColor: theme.cardBg,
+      borderRadius: 14,
+      padding: 14,
+      marginTop: 14,
+    },
+    agreementSectionLabel: {
+      color: theme.textMuted,
+      fontSize: 11,
+      fontWeight: '700',
+      letterSpacing: 0.5,
+      marginBottom: 10,
+    },
+    partyRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+    },
+    partyAvatar: {
+      width: 36,
+      height: 36,
+      borderRadius: 18,
+      backgroundColor: theme.purple,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    partyAvatarText: {
+      color: '#FFFFFF',
+      fontSize: 14,
+      fontWeight: '700',
+    },
+    partyInfoCol: {
+      flex: 1,
+      marginLeft: 10,
+    },
+    partyName: {
+      color: theme.textPrimary,
+      fontSize: 14,
+      fontWeight: '600',
+    },
+    partySkill: {
+      color: theme.textMuted,
+      fontSize: 12,
+      marginTop: 1,
+    },
+    swapIconCenter: {
+      alignItems: 'center',
+      marginVertical: 6,
+    },
+    termRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'space-between',
+      paddingVertical: 5,
+    },
+    termLabel: {
+      color: theme.textMuted,
+      fontSize: 13,
+    },
+    termValue: {
+      color: theme.textPrimary,
+      fontSize: 13,
+      fontWeight: '600',
+      flexShrink: 1,
+      textAlign: 'right',
+      marginLeft: 12,
+    },
+    termValueTeal: {
+      color: theme.teal,
+    },
+    legalNote: {
+      backgroundColor: theme.inputBg,
+      borderRadius: 12,
+      padding: 12,
+      marginTop: 14,
+    },
+    legalNoteText: {
+      color: theme.textMuted,
+      fontSize: 11,
+      lineHeight: 16,
+    },
+    closeAgreementBtn: {
+      backgroundColor: theme.purple,
+      borderRadius: 12,
+      height: 46,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: 14,
+    },
+    closeAgreementText: {
+      color: '#FFFFFF',
+      fontSize: 15,
+      fontWeight: '700',
+    },
+
     // ── Swap status banner ──────────────────────────────────────────────────
     statusBanner: {
       marginHorizontal: 14,

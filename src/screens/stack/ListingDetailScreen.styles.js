@@ -134,6 +134,11 @@ const getStyles = theme =>
       fontSize: 11,
       marginLeft: 4,
     },
+    noRatingSmall: {
+      color: theme.textMuted,
+      fontSize: 11,
+      marginTop: 2,
+    },
     viewProfileButton: {
       borderWidth: 1,
       borderColor: theme.purple,

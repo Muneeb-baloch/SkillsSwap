@@ -10,6 +10,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Admin account for monitoring swap agreements. Replace with the real
+    // admin UID: Firebase Console → Authentication → Users → copy UID.
+    function isAdmin() {
+      return request.auth.uid == 'ADMIN_UID_HERE';
+    }
+
     // User profiles: any signed-in user can view them (browsing listings,
     // viewing profiles). Only the owner writes their own doc, EXCEPT
     // rating + reviewCount, which are recalculated from the reviewer's
@@ -62,10 +68,42 @@ service cloud.firestore {
       match /messages/{messageId} {
         allow read: if signedIn() &&
           request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
+        // Participants write their own messages; 'system' messages (swap
+        // status updates, agreement notices) are also posted from a
+        // participant's device, so they're allowed for participants too.
         allow create: if signedIn() &&
-          request.resource.data.senderId == request.auth.uid &&
+          (request.resource.data.senderId == request.auth.uid ||
+            request.resource.data.senderId == 'system') &&
           request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants;
       }
+    }
+
+    // Swap agreements: readable/updatable only by the two parties (and the
+    // admin, who sees everything for monitoring). Created from the accepting
+    // user's device when a request is accepted — the creator must be one of
+    // the parties named in the agreement itself.
+    match /swapAgreements/{agreementId} {
+      allow read: if signedIn() && (
+        resource.data.party1.userId == request.auth.uid ||
+        resource.data.party2.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow create: if signedIn() && (
+        request.resource.data.party1.userId == request.auth.uid ||
+        request.resource.data.party2.userId == request.auth.uid
+      );
+      allow update: if signedIn() && (
+        resource.data.party1.userId == request.auth.uid ||
+        resource.data.party2.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Shared counters (swap agreement reference numbers). Incremented in a
+    // transaction from the client, so any signed-in user may read/write.
+    match /counters/{counterId} {
+      allow read, write: if signedIn();
     }
 
     // Reviews: readable by all signed-in users; written once by the

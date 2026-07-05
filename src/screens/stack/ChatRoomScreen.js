@@ -12,7 +12,10 @@ import {
   Platform,
   Image,
   Alert,
+  Modal,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Svg, Path } from 'react-native-svg';
 import {
   collection,
   query,
@@ -51,6 +54,54 @@ function formatTime(date) {
   return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
+function timeAgo(date) {
+  if (!date) return 'recently';
+  const seconds = Math.floor((Date.now() - date.getTime()) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes} min ago`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `${hours} hour${hours > 1 ? 's' : ''} ago`;
+  const days = Math.floor(hours / 24);
+  return `${days} day${days > 1 ? 's' : ''} ago`;
+}
+
+// ── Icons ─────────────────────────────────────────────────────────────────────
+
+const AgreementDocIcon = ({ color, size = 16 }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Path
+      d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"
+      fill="none"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+    <Path
+      d="M14 2v6h6M16 13H8M16 17H8M10 9H8"
+      fill="none"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
+const SwapArrowsIcon = ({ color, size = 20 }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24">
+    <Path
+      d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"
+      fill="none"
+      stroke={color}
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    />
+  </Svg>
+);
+
 // How many whole hours have elapsed since a Firestore timestamp.
 const hoursSince = timestamp => {
   if (!timestamp) return 0;
@@ -67,6 +118,7 @@ const isAutoUnlocked = requestData => {
 };
 
 const ChatRoomScreen = ({ navigation, route }) => {
+  const insets = useSafeAreaInsets();
   const { theme, isDark } = useTheme();
   const styles = getStyles(theme);
   const { chatId } = route.params || {};
@@ -75,6 +127,8 @@ const ChatRoomScreen = ({ navigation, route }) => {
   const [chat, setChat] = useState(null);
   const [request, setRequest] = useState(null);
   const [otherProfile, setOtherProfile] = useState(null);
+  const [agreement, setAgreement] = useState(null);
+  const [showAgreementModal, setShowAgreementModal] = useState(false);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -122,6 +176,26 @@ const ChatRoomScreen = ({ navigation, route }) => {
     );
     return unsub;
   }, [chat?.requestId]);
+
+  // Fetch the swap agreement linked to this request. Re-runs when the request
+  // status changes so the modal's status badge stays in sync after
+  // complete/dispute updates.
+  useEffect(() => {
+    const agreementId = request?.agreementId;
+    if (!agreementId) {
+      setAgreement(null);
+      return;
+    }
+    let active = true;
+    getDoc(doc(db, 'swapAgreements', agreementId))
+      .then(snap => {
+        if (active && snap.exists()) setAgreement({ id: snap.id, ...snap.data() });
+      })
+      .catch(err => console.error('Agreement load error:', err));
+    return () => {
+      active = false;
+    };
+  }, [request?.agreementId, request?.status]);
 
   // Real-time messages (newest first for an inverted list — no composite index needed).
   useEffect(() => {
@@ -236,6 +310,13 @@ const ChatRoomScreen = ({ navigation, route }) => {
         completedAt: serverTimestamp(),
         completionConfirmedBy: arrayUnion(currentUser.uid),
       });
+      if (request?.agreementId) {
+        await updateDoc(doc(db, 'swapAgreements', request.agreementId), {
+          status: 'completed',
+          completedAt: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        }).catch(err => console.warn('Agreement completion sync failed:', err));
+      }
       await addDoc(collection(db, 'chats', chatId, 'messages'), {
         senderId: 'system',
         text: `🎉 ${currentUser.displayName || 'A user'} confirmed the swap is complete! Both users can now leave reviews.`,
@@ -250,7 +331,7 @@ const ChatRoomScreen = ({ navigation, route }) => {
       setCompleting(false);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [requestId, chatId, currentUser, otherName]);
+  }, [requestId, chatId, currentUser, otherName, request?.agreementId]);
 
   // Step 2b: the other user disagrees → status becomes disputed.
   const handleDisputeComplete = useCallback(() => {
@@ -270,6 +351,12 @@ const ChatRoomScreen = ({ navigation, route }) => {
                 disputedBy: currentUser.uid,
                 disputedAt: serverTimestamp(),
               });
+              if (request?.agreementId) {
+                await updateDoc(doc(db, 'swapAgreements', request.agreementId), {
+                  status: 'disputed',
+                  updatedAt: serverTimestamp(),
+                }).catch(err => console.warn('Agreement dispute sync failed:', err));
+              }
               await addDoc(collection(db, 'chats', chatId, 'messages'), {
                 senderId: 'system',
                 text: `${currentUser.displayName || 'A user'} has reported this swap as incomplete. Please resolve this by messaging each other.`,
@@ -284,7 +371,7 @@ const ChatRoomScreen = ({ navigation, route }) => {
         },
       ],
     );
-  }, [requestId, chatId, currentUser]);
+  }, [requestId, chatId, currentUser, request?.agreementId]);
 
   const contactSupport = () =>
     Alert.alert('Support', 'Email us at support@skillsswap.app with your swap details.');
@@ -300,6 +387,25 @@ const ChatRoomScreen = ({ navigation, route }) => {
 
   // ── Renderers ──────────────────────────────────────────────────────────────
   const renderMessage = ({ item }) => {
+    // Agreement messages also come from 'system', so this check must run first.
+    if (item.type === 'agreement') {
+      return (
+        <TouchableOpacity
+          style={styles.agreementMessage}
+          onPress={() => setShowAgreementModal(true)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.agreementMsgIcon}>
+            <AgreementDocIcon color={theme.teal} size={18} />
+          </View>
+          <View style={styles.flex}>
+            <Text style={styles.agreementMsgTitle}>🤝 Swap Agreement Created</Text>
+            <Text style={styles.agreementMsgRef}>Ref: {item.referenceNo}</Text>
+            <Text style={styles.agreementMsgTap}>Tap to view agreement →</Text>
+          </View>
+        </TouchableOpacity>
+      );
+    }
     if (item.senderId === 'system' || item.type === 'system') {
       return (
         <View style={styles.systemRow}>
@@ -490,6 +596,24 @@ const ChatRoomScreen = ({ navigation, route }) => {
         )}
       </View>
 
+      {/* Swap agreement banner (tap to open the full agreement) */}
+      {agreement ? (
+        <TouchableOpacity
+          style={styles.agreementBanner}
+          onPress={() => setShowAgreementModal(true)}
+          activeOpacity={0.8}
+        >
+          <View style={styles.agreementBannerLeft}>
+            <AgreementDocIcon color={theme.teal} size={16} />
+            <View style={styles.agreementBannerTextCol}>
+              <Text style={styles.agreementBannerTitle}>Swap Agreement</Text>
+              <Text style={styles.agreementBannerRef}>Ref: {agreement.referenceNo}</Text>
+            </View>
+          </View>
+          <Text style={styles.agreementBannerView}>View →</Text>
+        </TouchableOpacity>
+      ) : null}
+
       <KeyboardAvoidingView
         style={styles.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
@@ -565,6 +689,130 @@ const ChatRoomScreen = ({ navigation, route }) => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* ── Agreement detail modal ─────────────────────────────────────────── */}
+      <Modal
+        visible={showAgreementModal}
+        animationType="slide"
+        transparent
+        onRequestClose={() => setShowAgreementModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowAgreementModal(false)}
+        />
+
+        <View style={[styles.agreementSheet, { paddingBottom: insets.bottom + 16 }]}>
+          <View style={styles.dragHandle} />
+
+          <View style={styles.agreementHeader}>
+            <Text style={styles.agreementTitle}>Swap Agreement</Text>
+            <Text style={styles.agreementRef}>{agreement?.referenceNo}</Text>
+          </View>
+
+          <View style={styles.agreementStatusRow}>
+            <View
+              style={[
+                styles.statusBadge,
+                agreement?.status === 'active' || agreement?.status === 'completed'
+                  ? styles.statusBadgeActive
+                  : styles.statusBadgeProblem,
+              ]}
+            >
+              <Text
+                style={[
+                  styles.statusBadgeText,
+                  agreement?.status === 'active' || agreement?.status === 'completed'
+                    ? styles.statusBadgeTextActive
+                    : styles.statusBadgeTextProblem,
+                ]}
+              >
+                ● {agreement?.status?.toUpperCase()}
+              </Text>
+            </View>
+            <Text style={styles.agreementDate}>
+              Created {timeAgo(agreement?.createdAt?.toDate?.())}
+            </Text>
+          </View>
+
+          {/* Parties */}
+          <View style={styles.agreementSection}>
+            <Text style={styles.agreementSectionLabel}>PARTIES INVOLVED</Text>
+
+            <View style={styles.partyRow}>
+              <View style={styles.partyAvatar}>
+                <Text style={styles.partyAvatarText}>
+                  {agreement?.party1?.name?.charAt(0)?.toUpperCase()}
+                </Text>
+              </View>
+              <View style={styles.partyInfoCol}>
+                <Text style={styles.partyName}>{agreement?.party1?.name}</Text>
+                <Text style={styles.partySkill}>
+                  Offering: {capitalize(agreement?.party1?.offerSkill)}
+                </Text>
+              </View>
+            </View>
+
+            <View style={styles.swapIconCenter}>
+              <SwapArrowsIcon color={theme.textMuted} size={20} />
+            </View>
+
+            <View style={styles.partyRow}>
+              <View style={styles.partyAvatar}>
+                <Text style={styles.partyAvatarText}>
+                  {agreement?.party2?.name?.charAt(0)?.toUpperCase()}
+                </Text>
+              </View>
+              <View style={styles.partyInfoCol}>
+                <Text style={styles.partyName}>{agreement?.party2?.name}</Text>
+                <Text style={styles.partySkill}>
+                  Offering: {capitalize(agreement?.party2?.offerSkill)}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Terms */}
+          <View style={styles.agreementSection}>
+            <Text style={styles.agreementSectionLabel}>AGREED TERMS</Text>
+
+            <View style={styles.termRow}>
+              <Text style={styles.termLabel}>Format</Text>
+              <Text style={styles.termValue}>
+                {agreement?.preferredFormats?.join(', ') || 'Flexible'}
+              </Text>
+            </View>
+
+            <View style={styles.termRow}>
+              <Text style={styles.termLabel}>Flexibility</Text>
+              <Text style={styles.termValue}>{agreement?.flexibility || 'Open'}</Text>
+            </View>
+
+            <View style={styles.termRow}>
+              <Text style={styles.termLabel}>Status</Text>
+              <Text style={[styles.termValue, styles.termValueTeal]}>
+                {agreement?.status === 'active' ? 'In progress' : agreement?.status}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.legalNote}>
+            <Text style={styles.legalNoteText}>
+              This agreement is monitored by SkillsSwap to ensure fair exchanges. Reference
+              number {agreement?.referenceNo} can be used for any disputes.
+            </Text>
+          </View>
+
+          <TouchableOpacity
+            style={styles.closeAgreementBtn}
+            onPress={() => setShowAgreementModal(false)}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.closeAgreementText}>Close</Text>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
